@@ -14,13 +14,14 @@ from utils.optimization import (
     get_scheduler
 )
 from data.helpers import get_data_loaders, get_test_data_loader
-from utils.utils import display_results
+from utils.utils import display_results, mean_iou
 
 
 def evaluate(net, dataloader, device, loss):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
+    iou_metrics_avg = {}
 
     # iterate over the validation set
     for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
@@ -30,12 +31,28 @@ def evaluate(net, dataloader, device, loss):
 
         with torch.no_grad():
             logits = net(image)
-            m = torch.nn.Softmax(dim=1)
-            preds = m(logits)
+            softmax = torch.nn.Softmax(dim=1)
+            preds = softmax(logits)
             dice_score += loss(preds, mask_true)
 
+            pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
+            mask = mask_true.detach().cpu().numpy()
+            iou_metrics = mean_iou(pred_labels, mask)
+
+            if not iou_metrics_avg:
+                iou_metrics_avg = iou_metrics
+            else:
+                for name, value in iou_metrics_avg.items():
+                    if not m.isnan(value):
+                        iou_metrics_avg[name] += iou_metrics[name]
+
+    val_iou_metrics_avg = {}
+    for name, value in iou_metrics_avg.items():
+        if not m.isnan(value):
+            val_iou_metrics_avg[f"val/{name}"] = value/num_val_batches
+
     net.train()
-    return dice_score / num_val_batches
+    return dice_score/num_val_batches, val_iou_metrics_avg
 
 
 def train_net_coco(net, args):
@@ -56,8 +73,10 @@ def train_net_coco(net, args):
 
     # 5. Set up weights and biases tracking
     # wandb.init(project="test-project", entity="wildme")  <<== cause errors
-    wandb.init(project=args.wandb_project_name)
-    wandb.config = vars(args)
+    wandb.init(
+        project=args.wandb_project_name,
+        config=vars(args)
+    )
     # wandb.watch(net)
     image_ct = 0         # Counts the number of images examined
     global_step_ct = 0   # Counts the number of training steps
@@ -108,7 +127,7 @@ def train_net_coco(net, args):
                         histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
                         histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
                     '''
-                    val_score = evaluate(net, val_loader, args.device, dice_loss)
+                    val_score, iou_metrics = evaluate(net, val_loader, args.device, dice_loss)
 
                     if val_score >= best_val:
                         print(f'Validation score {val_score}')
@@ -127,8 +146,8 @@ def train_net_coco(net, args):
                             display_results(net, val_set, args.device, num_to_show)
 
                     # Output to wandb
-                    val_metrics = {"val/val_accuracy": val_score}
-                    wandb.log({**metrics, **val_metrics})
+                    val_metrics = {"val/val_dice": val_score}
+                    wandb.log({**metrics, **val_metrics, **iou_metrics})
                 else:
                     wandb.log(metrics)
 
@@ -143,9 +162,10 @@ def test(args):
 
     dice_loss, _ = get_criterion(args)
     test_loader = get_test_data_loader(args)
-    test_metric = evaluate(net_best, test_loader, args.device, dice_loss)
+    test_metric, iou_metrics = evaluate(net_best, test_loader, args.device, dice_loss)
 
     print(test_metric)
+    print(iou_metrics)
 
 def main():
     args = Namespace()
