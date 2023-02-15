@@ -150,8 +150,7 @@ def train_net_coco(net, args):
                 else:
                     wandb.log(metrics)
                 
-        display_results(net, val_set, args.device, num_to_show, wandb)
-
+    display_results(net, val_set, args.device, num_to_show, wandb)
 
     return path_to_best_model
 
