@@ -1,10 +1,16 @@
 import matplotlib.pyplot as plt
+
 import evaluate
 
 import torch
 from torch.utils.data import DataLoader
 
 metric = evaluate.load("mean_iou")
+
+class_labels = {
+    0: "background",
+    1: "foreground",
+}
 
 
 def mean_iou(preds, mask, id2label={0:'background', 1:'foreground'}):
@@ -25,7 +31,7 @@ def mean_iou(preds, mask, id2label={0:'background', 1:'foreground'}):
 
     return metrics
 
-def display_results(net, dset, device, num_to_show):
+def display_results(net, dset, device, num_to_show, wandb):
     '''
     Get for each of the first num_to_show validation images,
     1. Form into batches
@@ -38,14 +44,14 @@ def display_results(net, dset, device, num_to_show):
     
     batch_size = 5
     loader_args = dict(batch_size=batch_size, num_workers=2, pin_memory=True)
-    ds_loader = DataLoader(dset, shuffle=True, drop_last=True, **loader_args)
+    ds_loader = DataLoader(dset, shuffle=False, drop_last=True, **loader_args)
     num_shown = 0
     for images, masks, names in ds_loader:
         images = images.to(device)
         net.eval()
         logits = net(images)
         m = torch.nn.Softmax(dim=1)
-        probs = m(logits)    # batch x
+        probs = m(logits) # batch x
         preds = torch.max(probs, dim=1).indices
 
         '''
@@ -67,36 +73,17 @@ def display_results(net, dset, device, num_to_show):
         foreground, 1 indicates background. For alphas, 1 indicates that the pixel
         is of interest.
         '''
-        figure = plt.figure(figsize=(9, 3*num_to_show))
 
-        rows, cols = display_length, 3
-        j=1
         for i in range(display_length):
             im = images[i, ...].detach().cpu().numpy()
             im = im.transpose(1, 2, 0)
             mask = masks[i, ...].numpy()
             pred = preds[i, ...].detach().cpu().numpy()
-
-            figure.add_subplot(rows, cols, j)
-            plt.title(names[i])
-            plt.axis('off')
-            plt.imshow(im)
-            j += 1
-
-            mask_to_show = (1 -  mask) * 255  # 
-            figure.add_subplot(rows, cols, j)
-            plt.title('Manual')
-            plt.axis('off')
-            plt.imshow(mask_to_show)
-            j += 1
-
-            pred_to_show = (1 -  pred) * 255
-            figure.add_subplot(rows, cols, j)
-            plt.title('Predicted')
-            plt.axis('off')
-            plt.imshow(pred_to_show)
-            j += 1
-
-        plt.show()
+            
+            wandb.Image(im, masks={
+                "prediction" : {"mask_data" : pred, "class_labels" : class_labels},
+                "ground truth" : {"mask_data" : mask, "class_labels" : class_labels}}
+            )
+            
         if num_shown >= num_to_show:
             break

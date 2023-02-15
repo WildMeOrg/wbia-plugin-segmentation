@@ -143,13 +143,15 @@ def train_net_coco(net, args):
                             path_to_best_model = str(p / save_name)
                             torch.save(net.state_dict(), path_to_best_model)
                             logging.info('Saved new best model to', path_to_best_model)
-                            display_results(net, val_set, args.device, num_to_show)
 
                     # Output to wandb
                     val_metrics = {"val/val_dice": val_score}
                     wandb.log({**metrics, **val_metrics, **iou_metrics})
                 else:
                     wandb.log(metrics)
+                
+        display_results(net, val_set, args.device, num_to_show, wandb)
+
 
     return path_to_best_model
 
