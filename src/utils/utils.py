@@ -54,9 +54,9 @@ def display_results(net, dset, args, wandb):
         images = images.to(args.device)
 
         if args.model_name == 'hf':
-            logits, mask_true = net(images, mask_true)
+            logits, _ = net(images, masks)
             preds = nn.functional.interpolate(
-                logits.logits,
+                logits,
                 size=(args.img_height, args.img_width),
                 mode="bilinear",
                 align_corners=False,

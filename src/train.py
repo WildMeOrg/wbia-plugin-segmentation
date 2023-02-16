@@ -33,9 +33,9 @@ def evaluate(net, dataloader, args, device, loss):
         with torch.no_grad():
             if args.model_name == 'hf':
                 logits, mask_true = net(image, mask_true)
-                dice_score += loss(logits.logits, mask_true)
-                logits = nn.functional.interpolate(
-                    logits.logits,
+                dice_score += loss(logits, mask_true)
+                preds = nn.functional.interpolate(
+                    logits,
                     size=(args.img_height, args.img_width),
                     mode="bilinear",
                     align_corners=False,
@@ -154,9 +154,13 @@ def train_net_coco(net, args):
                             p = Path(args.dir_checkpoint)
                             p.mkdir(parents=True, exist_ok=True)
                             # save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}.pth'
-                            save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}_valscore_{val_score:.4f}.pth'
+                            save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}_valscore_{val_score:.4f}'
                             path_to_best_model = str(p / save_name)
-                            torch.save(net.state_dict(), path_to_best_model)
+
+                            if args.model_name == 'hf':
+                                net.save_pretrained(save_name, from_pt=True)
+                            else:
+                                torch.save(net.state_dict(), path_to_best_model+'.pth')
                             logging.info('Saved new best model to', path_to_best_model)
 
                     # Output to wandb
@@ -165,7 +169,10 @@ def train_net_coco(net, args):
                 else:
                     wandb.log(metrics)
     
-    net.load_state_dict(torch.load(path_to_best_model))
+    if args.model_name == 'hf':
+        net.from_pretrained(path_to_best_model)
+    else:
+        net.load_state_dict(torch.load(path_to_best_model))
     net.to(args.device)
     net.eval()
     display_results(net, val_set, args, wandb)
