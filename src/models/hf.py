@@ -15,12 +15,15 @@ class HfTransformer(nn.Module):
             label2id=args.label2id
         )
 
-        self.image_processor = AutoImageProcessor.from_pretrained(args.model_path)
+        self.image_processor = AutoImageProcessor.from_pretrained(
+            args.model_path,
+            size={"height": args.img_height, "width": args.img_width}
+        )
 
     def forward(self, img, mask):
         img = [x for x in img]
         mask = [x for x in mask]
-        img_mask_processed = self.image_processor(images=img, segmentation_maps=mask, return_tensors="pt")
+        img_mask_processed = self.image_processor(images=img, segmentation_maps=mask, return_tensors="pt", do_reduce_labels=False)
         img_processed = img_mask_processed['pixel_values'].to(self.device)
         pred_mask = self.model(img_processed)
 
