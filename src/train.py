@@ -5,6 +5,7 @@ from argparse import Namespace
 from tqdm import tqdm
 import wandb
 
+import torch.nn as nn
 import torch
 
 from models import get_model
@@ -17,7 +18,7 @@ from data.helpers import get_data_loaders, get_test_data_loader
 from utils.utils import display_results, mean_iou
 
 
-def evaluate(net, dataloader, device, loss):
+def evaluate(net, dataloader, args, device, loss):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
@@ -30,11 +31,21 @@ def evaluate(net, dataloader, device, loss):
         mask_true = mask_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
-            logits = net(image)
-            softmax = torch.nn.Softmax(dim=1)
-            preds = softmax(logits)
-            dice_score += loss(preds, mask_true)
-
+            if args.model_name == 'hf':
+                logits, mask_true = net(image, mask_true)
+                dice_score += loss(logits.logits, mask_true)
+                logits = nn.functional.interpolate(
+                    logits.logits,
+                    size=(args.img_height, args.img_width),
+                    mode="bilinear",
+                    align_corners=False,
+                )
+            else:
+                logits = net(image)
+                softmax = torch.nn.Softmax(dim=1)
+                preds = softmax(logits)
+                dice_score += loss(preds, mask_true)
+            
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
             mask = mask_true.detach().cpu().numpy()
             iou_metrics = mean_iou(pred_labels, mask)
@@ -97,7 +108,11 @@ def train_net_coco(net, args):
 
                 with torch.cuda.amp.autocast(enabled=args.amp):
                     net = net.float()
-                    logits = net(images)
+                    
+                    if args.model_name == 'hf':
+                        logits, masks = net(images, masks)
+                    else:
+                        logits = net(images)
                     loss = criterion(logits, masks) \
                             + dice_loss(sm(logits), masks)
 
@@ -127,7 +142,7 @@ def train_net_coco(net, args):
                         histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
                         histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
                     '''
-                    val_score, iou_metrics = evaluate(net, val_loader, args.device, dice_loss)
+                    val_score, iou_metrics = evaluate(net, val_loader, args, args.device, dice_loss)
 
                     if val_score >= best_val:
                         print(f'Validation score {val_score}')
@@ -194,7 +209,8 @@ def main():
     args.norm_std = None
 
     # Model
-    args.model_name = "unet"
+    args.model_name = "hf"
+    args.model_path = "nvidia/mit-b0"
     args.n_channels = 3
     args.n_classes = 2
     args.bilinear = False

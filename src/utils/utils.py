@@ -45,7 +45,6 @@ def display_results(net, dset, device, num_to_show, wandb):
     batch_size = 5
     loader_args = dict(batch_size=batch_size, num_workers=2, pin_memory=True)
     ds_loader = DataLoader(dset, shuffle=False, drop_last=True, **loader_args)
-    num_shown = 0
     table = wandb.Table(columns=['ID', 'Image'])
 
     for images, masks, names in ds_loader:

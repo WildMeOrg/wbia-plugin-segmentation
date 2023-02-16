@@ -1,8 +1,10 @@
 from models.unet import UNet
+from models.hf import HfTransformer
 
 
 MODELS = {
     "unet": UNet,
+    "hf": HfTransformer,
 }
 
 
