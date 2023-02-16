@@ -31,20 +31,14 @@ def evaluate(net, dataloader, args, device, loss):
         mask_true = mask_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
+            softmax = torch.nn.Softmax(dim=1)
             if args.model_name == 'hf':
-                logits, mask_true = net(image, mask_true)
-                dice_score += loss(logits, mask_true)
-                preds = nn.functional.interpolate(
-                    logits,
-                    size=(args.img_height, args.img_width),
-                    mode="bilinear",
-                    align_corners=False,
-                )
+                logits, _ = net(image, mask_true)
             else:
                 logits = net(image)
-                softmax = torch.nn.Softmax(dim=1)
-                preds = softmax(logits)
-                dice_score += loss(preds, mask_true)
+            
+            preds = softmax(logits)
+            dice_score += loss(preds, mask_true)
             
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
             mask = mask_true.detach().cpu().numpy()
@@ -158,7 +152,7 @@ def train_net_coco(net, args):
                             path_to_best_model = str(p / save_name)
 
                             if args.model_name == 'hf':
-                                net.save_pretrained(save_name, from_pt=True)
+                                net.model.save_pretrained(path_to_best_model, from_pt=True)
                             else:
                                 torch.save(net.state_dict(), path_to_best_model+'.pth')
                             logging.info('Saved new best model to', path_to_best_model)
@@ -170,7 +164,7 @@ def train_net_coco(net, args):
                     wandb.log(metrics)
     
     if args.model_name == 'hf':
-        net.from_pretrained(path_to_best_model)
+        net.model.from_pretrained(path_to_best_model)
     else:
         net.load_state_dict(torch.load(path_to_best_model))
     net.to(args.device)
@@ -204,9 +198,9 @@ def main():
     args.is_train = True
     
     # Data
-    args.train_dir = './train'
-    args.val_dir = './val'
-    args.test_dir = './test'
+    args.train_dir = 'snowleopard_v2/train'
+    args.val_dir = 'snowleopard_v2/val'
+    args.test_dir = 'snowleopard_v2/test'
     args.num_workers = 2
     args.img_height = 400
     args.img_width = 400

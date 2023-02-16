@@ -55,16 +55,11 @@ def display_results(net, dset, args, wandb):
 
         if args.model_name == 'hf':
             logits, _ = net(images, masks)
-            preds = nn.functional.interpolate(
-                logits,
-                size=(args.img_height, args.img_width),
-                mode="bilinear",
-                align_corners=False,
-            )
         else:
             logits = net(images)
-            softmax = torch.nn.Softmax(dim=1)
-            preds = softmax(logits)
+        
+        softmax = torch.nn.Softmax(dim=1)
+        preds = softmax(logits)
 
         preds = torch.max(preds, dim=1).indices
 
