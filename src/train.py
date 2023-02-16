@@ -99,12 +99,10 @@ def train_net_coco(net, args):
 
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{args.epochs}', unit='img') as pbar:
             for images, masks, names in train_loader:
-                assert images.shape[1] == net.n_channels, \
-                    f'Network has been defined with {net.n_channels} input channels, ' \
+                assert images.shape[1] == args.n_channels, \
+                    f'Network has been defined with {args.n_channels} input channels, ' \
                     f'but loaded images have {images.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
-                images = images.to(device=args.device, dtype=torch.float32)
-                masks = masks.to(device=args.device, dtype=torch.long)
 
                 with torch.cuda.amp.autocast(enabled=args.amp):
                     net = net.float()
@@ -112,6 +110,8 @@ def train_net_coco(net, args):
                     if args.model_name == 'hf':
                         logits, masks = net(images, masks)
                     else:
+                        images = images.to(device=args.device, dtype=torch.float32)
+                        masks = masks.to(device=args.device, dtype=torch.long)
                         logits = net(images)
                     loss = criterion(logits, masks) \
                             + dice_loss(sm(logits), masks)
@@ -214,6 +214,8 @@ def main():
     args.n_channels = 3
     args.n_classes = 2
     args.bilinear = False
+    args.id2label = {0: "background", 1: "foreground"}
+    args.label2id = {"background": 0, "foreground": 1}
 
     # Training
     args.epochs = 25
