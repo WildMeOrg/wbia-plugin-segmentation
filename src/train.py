@@ -168,7 +168,7 @@ def train_net_coco(net, args):
     net.load_state_dict(torch.load(path_to_best_model))
     net.to(args.device)
     net.eval()
-    display_results(net, val_set, args.device, num_to_show, wandb)
+    display_results(net, val_set, args, wandb)
 
     return path_to_best_model
 
