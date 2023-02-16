@@ -160,6 +160,7 @@ def train_net_coco(net, args):
                     # Output to wandb
                     val_metrics = {"val/val_dice": val_score}
                     wandb.log({**metrics, **val_metrics, **iou_metrics})
+                    scheduler.step(val_score)
                 else:
                     wandb.log(metrics)
     
