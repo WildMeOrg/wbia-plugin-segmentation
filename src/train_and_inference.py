@@ -192,6 +192,7 @@ def test(args):
 
 def segmentation_output(args, names, labels):
     # NOT TESTED
+    #  OOPS.  JUST REMEMEBERED THAT THIS NEEDS INFORMATION ABOUT THE ORIGINAL DIMENSIONS.
     num_images = len(names)
     assert num_images == labels.size()[0]
     os.makedirs(args.inference_mask_dir, exist_ok=True)
