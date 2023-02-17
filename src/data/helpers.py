@@ -6,9 +6,9 @@ from torch.utils.data import DataLoader
 def get_data_loaders(args):
     train_transforms, test_transforms = build_train_val_transforms(args)
 
-    train_set = SegDataset(args.train_dir, train_transforms)
+    train_set = SegDataset(args.train_dir, args, train_transforms)
     n_train = len(train_set)
-    val_set = SegDataset(args.val_dir, test_transforms)
+    val_set = SegDataset(args.val_dir, args, test_transforms)
 
     # 2. Create data loaders
     loader_args = dict(batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
@@ -20,7 +20,7 @@ def get_data_loaders(args):
 def get_test_data_loader(args):
     _, test_transforms = build_train_val_transforms(args)
 
-    test_set = SegDataset(args.test_dir, test_transforms)
+    test_set = SegDataset(args.test_dir, args, test_transforms)
 
     # 2. Create data loaders
     loader_args = dict(batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)

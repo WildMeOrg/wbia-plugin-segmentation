@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import evaluate
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
 metric = evaluate.load("mean_iou")
@@ -31,7 +32,7 @@ def mean_iou(preds, mask, id2label={0:'background', 1:'foreground'}):
 
     return metrics
 
-def display_results(net, dset, device, num_to_show, wandb):
+def display_results(net, dset, args, wandb):
     '''
     Get for each of the first num_to_show validation images,
     1. Form into batches
@@ -45,16 +46,22 @@ def display_results(net, dset, device, num_to_show, wandb):
     batch_size = 5
     loader_args = dict(batch_size=batch_size, num_workers=2, pin_memory=True)
     ds_loader = DataLoader(dset, shuffle=False, drop_last=True, **loader_args)
-    num_shown = 0
     table = wandb.Table(columns=['ID', 'Image'])
 
+    net.eval()
+
     for images, masks, names in ds_loader:
-        images = images.to(device)
-        net.eval()
-        logits = net(images)
-        m = torch.nn.Softmax(dim=1)
-        probs = m(logits) # batch x
-        preds = torch.max(probs, dim=1).indices
+        images = images.to(args.device)
+
+        if args.model_name == 'hf':
+            logits, _ = net(images, masks)
+        else:
+            logits = net(images)
+        
+        softmax = torch.nn.Softmax(dim=1)
+        preds = softmax(logits)
+
+        preds = torch.max(preds, dim=1).indices
 
         '''
         At this point, probs, preds, masks should all be the same

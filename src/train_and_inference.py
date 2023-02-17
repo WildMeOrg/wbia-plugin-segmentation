@@ -6,6 +6,7 @@ from argparse import Namespace
 from tqdm import tqdm
 import wandb
 
+import torch.nn as nn
 import torch
 
 from models import get_model
@@ -18,7 +19,7 @@ from data.helpers import get_data_loaders, get_test_data_loader
 from utils.utils import display_results, mean_iou
 
 
-def evaluate(net, dataloader, device, loss):
+def evaluate(net, dataloader, args, device, loss):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
@@ -31,11 +32,15 @@ def evaluate(net, dataloader, device, loss):
         mask_true = mask_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
-            logits = net(image)
             softmax = torch.nn.Softmax(dim=1)
+            if args.model_name == 'hf':
+                logits, _ = net(image, mask_true)
+            else:
+                logits = net(image)
+            
             preds = softmax(logits)
             dice_score += loss(preds, mask_true)
-
+            
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
             mask = mask_true.detach().cpu().numpy()
             iou_metrics = mean_iou(pred_labels, mask)
@@ -89,16 +94,20 @@ def train_net_coco(net, args):
 
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{args.epochs}', unit='img') as pbar:
             for images, masks, names in train_loader:
-                assert images.shape[1] == net.n_channels, \
-                    f'Network has been defined with {net.n_channels} input channels, ' \
+                assert images.shape[1] == args.n_channels, \
+                    f'Network has been defined with {args.n_channels} input channels, ' \
                     f'but loaded images have {images.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
-                images = images.to(device=args.device, dtype=torch.float32)
-                masks = masks.to(device=args.device, dtype=torch.long)
 
                 with torch.cuda.amp.autocast(enabled=args.amp):
                     net = net.float()
-                    logits = net(images)
+                    
+                    if args.model_name == 'hf':
+                        logits, masks = net(images, masks)
+                    else:
+                        images = images.to(device=args.device, dtype=torch.float32)
+                        masks = masks.to(device=args.device, dtype=torch.long)
+                        logits = net(images)
                     loss = criterion(logits, masks) \
                             + dice_loss(sm(logits), masks)
 
@@ -128,7 +137,7 @@ def train_net_coco(net, args):
                         histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
                         histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
                     '''
-                    val_score, iou_metrics = evaluate(net, val_loader, args.device, dice_loss)
+                    val_score, iou_metrics = evaluate(net, val_loader, args, args.device, dice_loss)
 
                     if val_score >= best_val:
                         print(f'Validation score {val_score}')
@@ -140,21 +149,29 @@ def train_net_coco(net, args):
                             p = Path(args.dir_checkpoint)
                             p.mkdir(parents=True, exist_ok=True)
                             # save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}.pth'
-                            save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}_valscore_{val_score:.4f}.pth'
+                            save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}_valscore_{val_score:.4f}'
                             path_to_best_model = str(p / save_name)
-                            torch.save(net.state_dict(), path_to_best_model)
+
+                            if args.model_name == 'hf':
+                                net.model.save_pretrained(path_to_best_model, from_pt=True)
+                            else:
+                                torch.save(net.state_dict(), path_to_best_model+'.pth')
                             logging.info('Saved new best model to', path_to_best_model)
 
                     # Output to wandb
                     val_metrics = {"val/val_dice": val_score}
                     wandb.log({**metrics, **val_metrics, **iou_metrics})
+                    scheduler.step(val_score)
                 else:
                     wandb.log(metrics)
     
-    net.load_state_dict(torch.load(path_to_best_model))
+    if args.model_name == 'hf':
+        net.model.from_pretrained(path_to_best_model)
+    else:
+        net.load_state_dict(torch.load(path_to_best_model))
     net.to(args.device)
     net.eval()
-    display_results(net, val_set, args.device, num_to_show, wandb)
+    display_results(net, val_set, args, wandb)
 
     return path_to_best_model
 
@@ -221,12 +238,13 @@ def main():
     args.processing_stage= 'Train' # OR 'Test' OR 'Inference' 
     
     # Data
-    args.train_dir = './train'
-    args.val_dir = './val'
-    args.test_dir = './test'
+    args.train_dir = 'snowleopard_v2/train'
+    args.val_dir = 'snowleopard_v2/val'
+    args.test_dir = 'snowleopard_v2/test'
     args.inference_dir = './inference'  # NEW
     args.mask_suffix = '_mask.png'         # NEW
     args.inference_mask_dir = './mask_results'
+
     args.num_workers = 2
     args.img_height = 400
     args.img_width = 400
@@ -237,10 +255,13 @@ def main():
     args.norm_std = None
 
     # Model
-    args.model_name = "unet"
+    args.model_name = "hf"
+    args.model_path = "nvidia/mit-b0"
     args.n_channels = 3
     args.n_classes = 2
     args.bilinear = False
+    args.id2label = {0: "background", 1: "foreground"}
+    args.label2id = {"background": 0, "foreground": 1}
 
     # Training
     args.epochs = 25

@@ -21,9 +21,9 @@ def get_optimizer(model, args):
 
 def get_scheduler(optimizer, args):
     if args.scheduler == "step":
-        scheduler = optim.StepLR(optimizer, args.scheduler_step_size),
+        scheduler = optim.StepLR(optimizer, args.scheduler_step_size)
     elif args.scheduler == "plateau":
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=args.scheduler_patience),
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=args.scheduler_patience)
     else:
         raise ValueError
 

@@ -12,6 +12,7 @@ import logging
 class SegDataset(Dataset):
     def __init__(self,
                  images_dir,
+                 args,
                  transform = None,
                  mask_suffix = '_mask.png'):
         '''
@@ -23,6 +24,7 @@ class SegDataset(Dataset):
         Finally, there is a one-to-one correspondence between image file and mask image
         files.
         '''
+        self.model_name = args.model_name
         self.images_dir = Path(images_dir)
         self.transform = transform
         file_names = listdir(images_dir)
@@ -65,7 +67,11 @@ class SegDataset(Dataset):
 
         '''
         im_fn = join(self.images_dir, self.image_fns[idx])
-        im = read_image(im_fn) / 255
+
+        if self.model_name == "hf":
+            im = read_image(im_fn)
+        else:
+            im = read_image(im_fn) / 255
         
         mask_fn = join(self.images_dir, self.mask_fns[idx])
         mask0 = read_image(mask_fn)
