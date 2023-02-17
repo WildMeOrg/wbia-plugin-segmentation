@@ -8,6 +8,8 @@ import wandb
 
 import torch.nn as nn
 import torch
+from torchvision.utils import save_image
+
 
 from models import get_model
 from utils.optimization import (
@@ -17,6 +19,7 @@ from utils.optimization import (
 )
 from data.helpers import get_data_loaders, get_test_data_loader
 from utils.utils import display_results, mean_iou
+from data.transforms import size_and_crop_to_original
 
 
 def evaluate(net, dataloader, args, device, loss):
@@ -190,15 +193,17 @@ def test(args):
     print(iou_metrics)
 
 
-def segmentation_output(args, names, labels):
+def segmentation_output(args, names, labels, sizes):
     # NOT TESTED
     #  OOPS.  JUST REMEMEBERED THAT THIS NEEDS INFORMATION ABOUT THE ORIGINAL DIMENSIONS.
     num_images = len(names)
     assert num_images == labels.size()[0]
     os.makedirs(args.inference_mask_dir, exist_ok=True)
 
-    for name, label in zip(names, labels):
+    for name, label, size in zip(names, labels, sizes):
+        bin_im = size_and_crop_to_original(bin_im, size[0], size[1])
         fp = os.path.join(arg.inference_mask_dir, name, args.mask_suffix)
+        save_image(bin_im, fp)
 
 
 def inference(args):
@@ -216,7 +221,7 @@ def inference(args):
 
     # iterate over the validation set
     for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
-        image, name = batch
+        image, name, im_size = batch
         image = image.to(device=device, dtype=torch.float32)
 
         with torch.no_grad():
@@ -224,7 +229,7 @@ def inference(args):
             softmax = torch.nn.Softmax(dim=1)
             preds = softmax(logits)
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
-            segmentation_output(args, name, pred_labels)
+            segmentation_output(args, name, pred_labels, im_size)
 
 
 
