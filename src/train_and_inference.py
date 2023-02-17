@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import logging
 import math as m
 from argparse import Namespace
@@ -171,6 +172,44 @@ def test(args):
     print(test_metric)
     print(iou_metrics)
 
+
+def segmentation_output(args, names, labels):
+    # NOT TESTED
+    num_images = len(names)
+    assert num_images == labels.size()[0]
+    os.makedirs(args.inference_mask_dir, exist_ok=True)
+
+    for name, label in zip(names, labels):
+        fp = os.path.join(arg.inference_mask_dir, name, args.mask_suffix)
+
+
+def inference(args):
+    '''
+    Apply inference to a folder of images.
+    NOT TESTED
+    '''
+    net_best = get_model(args)
+    net_best.load_state_dict(torch.load(args.path_to_best))
+    net_best.to(args.device)
+    net_best.eval()
+    inference_loader = get_inference_data_loader(args)
+
+    num_val_batches = len(inference_loader)
+
+    # iterate over the validation set
+    for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
+        image, name = batch
+        image = image.to(device=device, dtype=torch.float32)
+
+        with torch.no_grad():
+            logits = net(image)
+            softmax = torch.nn.Softmax(dim=1)
+            preds = softmax(logits)
+            pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
+            segmentation_output(args, name, pred_labels)
+
+
+
 def main():
     args = Namespace()
     
@@ -179,17 +218,21 @@ def main():
     args.dir_checkpoint = "./checkpoints"
     args.save_checkpoint = False
     args.path_to_best = ''
-    args.is_train = True
+    args.processing_stage= 'Train' # OR 'Test' OR 'Inference' 
     
     # Data
     args.train_dir = './train'
     args.val_dir = './val'
     args.test_dir = './test'
+    args.inference_dir = './inference'  # NEW
+    args.mask_suffix = '_mask.png'         # NEW
+    args.inference_mask_dir = './mask_results'
     args.num_workers = 2
     args.img_height = 400
     args.img_width = 400
     args.transforms_train = ["random_rotation", "random_crop"]
     args.transforms_test = 'center_crop'
+    args.transforms_inference = 'resize'
     args.norm_mean = None
     args.norm_std = None
 
@@ -214,11 +257,14 @@ def main():
     model = get_model(args)
     model = model.to(args.device)
 
-    if args.is_train:
+    if args.processing_stage == 'Train':
         path_to_best = train_net_coco(model, args)
         print(path_to_best)
-    else:
+    elif args.processing_stage == 'Test':
         test(args)
+    elif args.processing_stage == 'Inference':
+        inference(args)
+
 
 if __name__ == "__main__":
     main()

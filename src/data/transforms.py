@@ -1,4 +1,55 @@
 import torchvision.transforms as T
+import torchvision.transforms.functional as F
+import torchvision.transforms.InterpolationMode as InterpolationMode
+
+
+
+def calc_padding(h, w):
+    '''
+    Calculate the padding needed to make the image square (and centered).
+    Padding is only added to smaller dimension and it is equal on top/bottom, 
+    left/right if the image dimensions are even and shifted up/left by one
+    otherwise.
+    NOT TESTED!
+    '''
+    if w < h:
+        p = w - h
+        left = p // 2
+        right = p - left
+        padding = (left, 0, right, 0)
+    else:
+        p = h - w
+        top = p // 2
+        bottom = p - top
+        padding = (0, top, 0, bottom)
+    return padding
+
+  
+class SquarePad:
+    '''
+    Transform to make an input image (train, val, test) square
+    If the image is square already nothing is done to it.
+    NOT TESTED!
+    '''
+    def __call__(self, im):
+        h, w = im.size[-2], im.size[-1]
+        if h == w:
+            return im
+        padding = calc_padding(h, w)
+        return F.pad(im, padding, 0, 'constant')
+
+
+def size_and_crop_to_original(bin_im, orig_height, orig_width):
+    '''
+    Return the binary image segmentation mask to the original
+    image dimension by resizing and cropping.
+    NOT TESTED!
+    '''
+    max_hw = max(orig_height, orig_width)
+    left, top, _, _ = calc_padding(orig_height, orig_width)
+    bin_im = F.resize(bin_im, max_hw, interpolation=InterpolationMode.NEAREST)
+    bin_im = F.crop(bin_im, top, left, orig_height, orig_width)
+    return bin_im
 
 
 def build_train_val_transforms(args):
@@ -71,7 +122,7 @@ def build_transforms(
         normalize = T.Normalize(mean=norm_mean, std=norm_std)
 
     print('Building transforms ...')
-    transform_list = []
+    transform_list = [SquarePad()]
 
     for tfm in transforms:
         if tfm == "affine":

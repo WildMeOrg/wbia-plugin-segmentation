@@ -16,15 +16,27 @@ class SegDataset(Dataset):
                  mask_suffix = '_mask.png'):
         '''
         Record the names, the image file names and the mask filenames (derived
-        from the image file names)
+        from the image file names).  This allows the original images (chips, actually)
+        and binary masks to co-exist in the same folder, provided the mask
+        images end with the given mask_suffix. It also, for historical reasons only,
+        allows there to be images with the name 'blend' in them.  These are ignored.
+        Finally, there is a one-to-one correspondence between image file and mask image
+        files.
         '''
         self.images_dir = Path(images_dir)
         self.transform = transform
-        self.image_fns = [fn for fn in listdir(images_dir) 
-                          if fn.lower().endswith('jpg') and 'blend' not in fn.lower()]
+        file_names = listdir(images_dir)
+        file_exts = [splitext(fn)[1].lower() for fn in file_names]
+        allowed_exts = ['.jpg', '.jpeg', '.png']
+        file_names = [fn
+                      for fn, fe in zip(file_names, file_ext)
+                      if fe in allowed_exts]
+        self.image_fns = [fn 
+                          for fn in file_names
+                          if 'blend' not in fn and not fn.lower().endswith(mask_suffix)]
         self.image_fns.sort()
         self.names = [splitext(im_fn)[0] for im_fn in self.image_fns]
-        self.mask_fns = [fn for fn in listdir(images_dir) if fn.lower().endswith(mask_suffix)]
+        self.mask_fns = [fn for fn in file_names if fn.lower().endswith(mask_suffix)]
         self.mask_fns.sort()
         if not self.image_fns:
             raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
@@ -37,6 +49,8 @@ class SegDataset(Dataset):
 
     def __getitem__(self, idx):
         '''
+        FIX ME.  THese comments are out of date.
+
         For the given idx, return the image, the mask, the alpha mask and the
         image name. The mask and the alpha mask require an explanation. The values
         in the mask are the reflection of the values in the input mask image:
@@ -68,3 +82,31 @@ class SegDataset(Dataset):
             im, mask = transformed[0], transformed[1][0]
       
         return im, mask, self.names[idx]
+
+
+
+class InferenceDataset(Dataset):
+    def __init__(self, images_dir, transform=None):
+        self.images_dir = Path(images_dir)
+        self.transform = transform
+        self.image_fns = [fn for fn in listdir(images_dir)   # NEED TO BE MORE GENERAL than just jpg
+                          if fn.lower().endswith('jpg')]
+        self.image_fns.sort()
+        if not self.image_fns or len(self.image_fns) == 0:
+            raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
+        logging.info(f'Creating inference dataset with {len(self.image_fns)} annotations')
+
+    def __len__(self):
+        return len(self.names)
+
+    def __get_item__(self, idx):
+        im_fn = join(self.images_dir, self.image_fns[idx])
+        im = read_image(im_fn) / 255
+        
+        if self.transform is not None:  # MAKE SURE THIS HAS PROPER RESIZE
+            im = self.transform(im)
+      
+        return im, self.names[idx]
+
+
+
