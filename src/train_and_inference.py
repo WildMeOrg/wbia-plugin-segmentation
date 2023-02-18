@@ -63,6 +63,7 @@ def evaluate(net, dataloader, args, device, loss):
 
 def train_net_coco(net, args):
     train_loader, n_train, val_loader, val_set = get_data_loaders(args)
+    args.num_training_steps = args.epochs * len(train_loader)
 
     dice_loss, criterion = get_criterion(args)
     optimizer = get_optimizer(net, args)
@@ -112,6 +113,7 @@ def train_net_coco(net, args):
                             + dice_loss(sm(logits), masks)
 
                 optimizer.zero_grad(set_to_none=True)
+                scheduler.step()
                 grad_scaler.scale(loss).backward()
                 grad_scaler.step(optimizer)
                 grad_scaler.update()
@@ -161,7 +163,6 @@ def train_net_coco(net, args):
                     # Output to wandb
                     val_metrics = {"val/val_dice": val_score}
                     wandb.log({**metrics, **val_metrics, **iou_metrics})
-                    scheduler.step(val_score)
                 else:
                     wandb.log(metrics)
     
@@ -198,7 +199,7 @@ def segmentation_output(args, names, labels):
     os.makedirs(args.inference_mask_dir, exist_ok=True)
 
     for name, label in zip(names, labels):
-        fp = os.path.join(arg.inference_mask_dir, name, args.mask_suffix)
+        fp = os.path.join(args.inference_mask_dir, name, args.mask_suffix)
 
 
 def inference(args):
@@ -210,17 +211,16 @@ def inference(args):
     net_best.load_state_dict(torch.load(args.path_to_best))
     net_best.to(args.device)
     net_best.eval()
-    inference_loader = get_inference_data_loader(args)
-
+    inference_loader = get_test_data_loader(args)
     num_val_batches = len(inference_loader)
 
     # iterate over the validation set
     for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
         image, name = batch
-        image = image.to(device=device, dtype=torch.float32)
+        image = image.to(device=args.device, dtype=torch.float32)
 
         with torch.no_grad():
-            logits = net(image)
+            logits = net_best(image)
             softmax = torch.nn.Softmax(dim=1)
             preds = softmax(logits)
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
