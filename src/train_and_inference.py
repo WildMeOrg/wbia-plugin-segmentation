@@ -196,14 +196,14 @@ def test(args):
 
 def segmentation_output(args, names, labels, sizes):
     # NOT TESTED
-    #  OOPS.  JUST REMEMEBERED THAT THIS NEEDS INFORMATION ABOUT THE ORIGINAL DIMENSIONS.
+    #  OOPS.  JUST REMEMBERED THAT THIS NEEDS INFORMATION ABOUT THE ORIGINAL DIMENSIONS.
     num_images = len(names)
     assert num_images == labels.size()[0]
     os.makedirs(args.inference_mask_dir, exist_ok=True)
 
     for name, label, size in zip(names, labels, sizes):
         bin_im = size_and_crop_to_original(bin_im, size[0], size[1])
-        fp = os.path.join(arg.inference_mask_dir, name, args.mask_suffix)
+        fp = os.path.join(args.inference_mask_dir, name, args.mask_suffix)
         save_image(bin_im, fp)
 
 
@@ -222,7 +222,7 @@ def inference(args):
     # iterate over the validation set
     for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
         image, name, im_size = batch
-        image = image.to(device=device, dtype=torch.float32)
+        image = image.to(device=args.device, dtype=torch.float32)
 
         with torch.no_grad():
             logits = net_best(image)
