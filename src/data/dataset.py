@@ -107,12 +107,16 @@ class InferenceDataset(Dataset):
 
     def __get_item__(self, idx):
         im_fn = join(self.images_dir, self.image_fns[idx])
-        im = read_image(im_fn) / 255
-        
+
+        if self.model_name == "hf":
+            im = read_image(im_fn)
+        else:
+            im = read_image(im_fn) / 255
+
         if self.transform is not None:  # MAKE SURE THIS HAS PROPER RESIZE
             im = self.transform(im)
       
-        return im, self.names[idx]
+        return im, self.names[idx], (im.size()[-2], im.size()[-1])
 
 
 
