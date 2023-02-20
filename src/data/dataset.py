@@ -74,7 +74,7 @@ class SegDataset(Dataset):
         self.mask_fns.sort()
 
         if "train" in images_dir and self.training_percent:
-            sample_size = int(len(self.image_fns)*0.9)
+            sample_size = int(len(self.image_fns)*self.training_percent)
             selected_idxs = select_random_elements(self.image_fns, sample_size, seed=42)
 
             self.image_fns = [self.image_fns[i] for i in selected_idxs]
