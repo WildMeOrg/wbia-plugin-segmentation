@@ -1,7 +1,6 @@
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
-import torchvision.transforms.InterpolationMode as InterpolationMode
-
+from torchvision.transforms import InterpolationMode
 
 
 def calc_padding(h, w):
@@ -32,7 +31,8 @@ class SquarePad:
     NOT TESTED!
     '''
     def __call__(self, im):
-        h, w = im.size[-2], im.size[-1]
+        s = im.size()
+        h, w = s[-2], s[-1]
         if h == w:
             return im
         padding = calc_padding(h, w)

@@ -76,6 +76,7 @@ def train_net_coco(net, args):
     sm = torch.nn.Softmax(dim=1)
 
     # 4. Set up to recall the best model and show results
+    val_score = 1e6
     best_val = 1e6
     max_val_to_save = 0.4   # was 0.25
     path_to_best_model = None
@@ -116,7 +117,10 @@ def train_net_coco(net, args):
                             + dice_loss(sm(logits), masks)
 
                 optimizer.zero_grad(set_to_none=True)
-                scheduler.step()
+                #if args.scheduler in ["plateau"]:
+                #    scheduler.step(val_score)
+                #else:
+                #    scheduler.step()
                 grad_scaler.scale(loss).backward()
                 grad_scaler.step(optimizer)
                 grad_scaler.update()
@@ -160,7 +164,8 @@ def train_net_coco(net, args):
                             if args.model_name == 'hf':
                                 net.model.save_pretrained(path_to_best_model, from_pt=True)
                             else:
-                                torch.save(net.state_dict(), path_to_best_model+'.pth')
+                                path_to_best_model = path_to_best_model+'.pth'
+                                torch.save(net.state_dict(), path_to_best_model)
                             logging.info('Saved new best model to', path_to_best_model)
 
                     # Output to wandb
@@ -250,6 +255,7 @@ def main():
     args.inference_dir = './inference'  # NEW
     args.mask_suffix = '_mask.png'         # NEW
     args.inference_mask_dir = './mask_results'
+    args.training_percent = None
 
     args.num_workers = 2
     args.img_height = 400

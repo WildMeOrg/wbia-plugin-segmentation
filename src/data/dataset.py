@@ -8,6 +8,37 @@ from os.path import join
 from pathlib import Path
 import logging
 
+import random
+
+def select_random_elements(lst, num_elements, seed=None):
+    """
+    Selects a specified number of elements from a list at random while maintaining their original order.
+    
+    Args:
+    lst: A list of elements
+    num_elements: An integer specifying the number of elements to select
+    seed: An optional integer seed value for reproducibility
+    
+    Returns:
+    A list of randomly selected elements from the input list in their original order
+    """
+    if num_elements > len(lst):
+        raise ValueError("num_elements must be less than or equal to the length of the input list")
+    
+    # Set the random seed if provided
+    if seed is not None:
+        random.seed(seed)
+    
+    # Make a copy of the list and shuffle its indices
+    indices = list(range(len(lst)))
+    random.shuffle(indices)
+    
+    # Select the specified number of indices and sort them
+    sample_indices = sorted(indices[:num_elements])
+    
+    # Extract the elements at the selected indices and return them in their original order
+    return sorted(sample_indices)
+
 
 class SegDataset(Dataset):
     def __init__(self,
@@ -24,6 +55,7 @@ class SegDataset(Dataset):
         Finally, there is a one-to-one correspondence between image file and mask image
         files.
         '''
+        self.training_percent = args.training_percent
         self.model_name = args.model_name
         self.images_dir = Path(images_dir)
         self.transform = transform
@@ -31,7 +63,7 @@ class SegDataset(Dataset):
         file_exts = [splitext(fn)[1].lower() for fn in file_names]
         allowed_exts = ['.jpg', '.jpeg', '.png']
         file_names = [fn
-                      for fn, fe in zip(file_names, file_ext)
+                      for fn, fe in zip(file_names, file_exts)
                       if fe in allowed_exts]
         self.image_fns = [fn 
                           for fn in file_names
@@ -40,6 +72,15 @@ class SegDataset(Dataset):
         self.names = [splitext(im_fn)[0] for im_fn in self.image_fns]
         self.mask_fns = [fn for fn in file_names if fn.lower().endswith(mask_suffix)]
         self.mask_fns.sort()
+
+        if "train" in images_dir and self.training_percent:
+            sample_size = int(len(self.image_fns)*0.9)
+            selected_idxs = select_random_elements(self.image_fns, sample_size, seed=42)
+
+            self.image_fns = [self.image_fns[i] for i in selected_idxs]
+            self.mask_fns = [self.mask_fns[i] for i in selected_idxs]
+            self.names = [self.names[i] for i in selected_idxs]
+
         if not self.image_fns:
             raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
         if len(self.names) != len(self.mask_fns):
