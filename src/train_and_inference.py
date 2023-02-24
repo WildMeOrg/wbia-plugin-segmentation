@@ -117,12 +117,12 @@ def train_net_coco(net, args):
                             + dice_loss(sm(logits), masks)
 
                 optimizer.zero_grad(set_to_none=True)
+                grad_scaler.scale(loss).backward()
+                grad_scaler.step(optimizer)
                 #if args.scheduler in ["plateau"]:
                 #    scheduler.step(val_score)
                 #else:
                 #    scheduler.step()
-                grad_scaler.scale(loss).backward()
-                grad_scaler.step(optimizer)
                 grad_scaler.update()
 
                 im_length = images.shape[0]

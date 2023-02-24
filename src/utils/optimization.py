@@ -1,6 +1,6 @@
 import torch.optim as optim
 import torch.nn as nn
-from transformers import get_scheduler
+from transformers import get_scheduler as get_hf_scheduler
 
 from utils.loss import dice_loss
 
@@ -28,7 +28,7 @@ def get_scheduler(optimizer, args):
     if args.scheduler == "step":
         scheduler = optim.StepLR(optimizer, args.scheduler_step_size)
     elif args.scheduler == "linear":
-        scheduler = get_scheduler(
+        scheduler = get_hf_scheduler(
             "linear",
             optimizer=optimizer,
             num_warmup_steps=0,
