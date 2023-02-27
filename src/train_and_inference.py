@@ -119,10 +119,12 @@ def train_net_coco(net, args):
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
                 grad_scaler.step(optimizer)
-                #if args.scheduler in ["plateau"]:
-                #    scheduler.step(val_score)
-                #else:
-                #    scheduler.step()
+                if args.scheduler and args.scheduler in ["plateau"]:
+                    scheduler.step(val_score)
+                elif args.scheduler:
+                    scheduler.step()
+                else:
+                    pass
                 grad_scaler.update()
 
                 im_length = images.shape[0]
@@ -249,9 +251,10 @@ def main():
     args.processing_stage= 'Train' # OR 'Test' OR 'Inference' 
     
     # Data
-    args.train_dir = 'snowleopard_v2/train'
-    args.val_dir = 'snowleopard_v2/val'
-    args.test_dir = 'snowleopard_v2/test'
+    args.dataset_name = 'snowleopard_v2'
+    args.train_dir = f'{args.dataset_name}/train'
+    args.val_dir = f'{args.dataset_name}/val'
+    args.test_dir = f'{args.dataset_name}/test'
     args.inference_dir = './inference'  # NEW
     args.mask_suffix = '_mask.png'         # NEW
     args.inference_mask_dir = './mask_results'
@@ -268,7 +271,7 @@ def main():
 
     # Model
     args.model_name = "hf"
-    args.model_path = "nvidia/mit-b0"
+    args.model_path = "nvidia/mit-b2"
     args.n_channels = 3
     args.n_classes = 2
     args.bilinear = False
@@ -278,8 +281,8 @@ def main():
     # Training
     args.epochs = 25
     args.batch_size = 2
-    args.optim = "rms"
-    args.scheduler = "plateau"
+    args.optim = "adamw"
+    args.scheduler = "linear"
     args.scheduler_patience = 2
     args.lr = 1e-5
     args.amp = False
