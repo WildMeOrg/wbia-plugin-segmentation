@@ -19,7 +19,7 @@ def mean_iou(preds, mask, id2label={0:'background', 1:'foreground'}):
                 predictions=preds,
                 references=mask,
                 num_labels=len(id2label),
-                ignore_index=0,
+                ignore_index=255,
                 reduce_labels=False,
             )
         
