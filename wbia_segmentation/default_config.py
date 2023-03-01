@@ -6,6 +6,7 @@ def get_default_config():
     cfg = CN()
 
     # management
+    cfg.management = CN()
     cfg.management.wandb_project_name = "segmentation"
     cfg.management.dir_checkpoint = "./checkpoints"
     cfg.management.save_checkpoint = False
@@ -13,6 +14,7 @@ def get_default_config():
     cfg.management.processing_stage = 'Train' # OR 'Test' OR 'Inference'
 
     # model
+    cfg.model = CN()
     cfg.model.name = 'hf'
     cfg.model.hf_path = 'nvidia/mit-b2'
     cfg.model.n_channels = 3
@@ -22,6 +24,7 @@ def get_default_config():
     cfg.model.label2id = {"background": 0, "foreground": 1}
 
     # data
+    cfg.data = CN()
     cfg.data.source = 'snowleopard_v2'
     cfg.data.inference_dir = './inference'
     cfg.data.mask_suffix = '_mask.png'
@@ -37,6 +40,7 @@ def get_default_config():
     cfg.data.norm_std = None
 
     # train
+    cfg.train = CN()
     cfg.train.epochs = 25
     cfg.train.batch_size = 2
     cfg.train.optim = "adamw"
