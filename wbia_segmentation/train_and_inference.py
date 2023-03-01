@@ -37,7 +37,7 @@ def evaluate(net, dataloader, args, loss):
 
         with torch.no_grad():
             softmax = torch.nn.Softmax(dim=1)
-            if args.model_name == 'hf':
+            if args.model.name == 'hf':
                 logits, _ = net(image, mask_true)
             else:
                 logits = net(image)
