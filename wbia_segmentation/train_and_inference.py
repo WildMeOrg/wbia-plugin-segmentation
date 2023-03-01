@@ -23,7 +23,7 @@ from data.transforms import size_and_crop_to_original
 from default_config import get_default_config
 
 
-def evaluate(net, dataloader, args, device, loss):
+def evaluate(net, dataloader, args, loss):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
@@ -32,8 +32,8 @@ def evaluate(net, dataloader, args, device, loss):
     # iterate over the validation set
     for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
         image, mask_true, name = batch
-        image = image.to(device=device, dtype=torch.float32)
-        mask_true = mask_true.to(device=device, dtype=torch.long)
+        image = image.to(device=args.train.device, dtype=torch.float32)
+        mask_true = mask_true.to(device=args.train.device, dtype=torch.long)
 
         with torch.no_grad():
             softmax = torch.nn.Softmax(dim=1)
@@ -67,13 +67,13 @@ def evaluate(net, dataloader, args, device, loss):
 
 def train_net_coco(net, args):
     train_loader, n_train, val_loader, val_set = get_data_loaders(args)
-    args.num_training_steps = args.epochs * len(train_loader)
+    args.train.num_training_steps = args.train.epochs * len(train_loader)
 
     dice_loss, criterion = get_criterion(args)
     optimizer = get_optimizer(net, args)
     scheduler = get_scheduler(optimizer, args)
    
-    grad_scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
+    grad_scaler = torch.cuda.amp.GradScaler(enabled=args.train.amp)
     sm = torch.nn.Softmax(dim=1)
 
     # 4. Set up to recall the best model and show results
@@ -81,38 +81,37 @@ def train_net_coco(net, args):
     best_val = 1e6
     max_val_to_save = 0.4   # was 0.25
     path_to_best_model = None
-    num_to_show = 5   # when visualizing validation errors
 
     # 5. Set up weights and biases tracking
     # wandb.init(project="test-project", entity="wildme")  <<== cause errors
     wandb.init(
-        project=args.wandb_project_name,
+        project=args.management.wandb_project_name,
         config=vars(args)
     )
     # wandb.watch(net)
     image_ct = 0         # Counts the number of images examined
     global_step_ct = 0   # Counts the number of training steps
-    n_steps_per_epoch = m.ceil(n_train / args.batch_size)
+    n_steps_per_epoch = m.ceil(n_train / args.train.batch_size)
 
     # 5. Begin training
-    for epoch in range(1, args.epochs+1):
+    for epoch in range(1, args.train.epochs+1):
         net.train()
 
-        with tqdm(total=n_train, desc=f'Epoch {epoch}/{args.epochs}', unit='img') as pbar:
+        with tqdm(total=n_train, desc=f'Epoch {epoch}/{args.train.epochs}', unit='img') as pbar:
             for images, masks, names in train_loader:
-                assert images.shape[1] == args.n_channels, \
-                    f'Network has been defined with {args.n_channels} input channels, ' \
+                assert images.shape[1] == args.data.n_channels, \
+                    f'Network has been defined with {args.data.n_channels} input channels, ' \
                     f'but loaded images have {images.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
 
-                with torch.cuda.amp.autocast(enabled=args.amp):
+                with torch.cuda.amp.autocast(enabled=args.train.amp):
                     net = net.float()
                     
-                    if args.model_name == 'hf':
+                    if args.model.name == 'hf':
                         logits, masks = net(images, masks)
                     else:
-                        images = images.to(device=args.device, dtype=torch.float32)
-                        masks = masks.to(device=args.device, dtype=torch.long)
+                        images = images.to(device=args.train.device, dtype=torch.float32)
+                        masks = masks.to(device=args.train.device, dtype=torch.long)
                         logits = net(images)
                     loss = criterion(logits, masks) \
                             + dice_loss(sm(logits), masks)
@@ -120,9 +119,9 @@ def train_net_coco(net, args):
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
                 grad_scaler.step(optimizer)
-                if args.scheduler and args.scheduler in ["plateau"]:
+                if args.train.scheduler and args.train.scheduler in ["plateau"]:
                     scheduler.step(val_score)
-                elif args.scheduler:
+                elif args.train.scheduler:
                     scheduler.step()
                 else:
                     pass
@@ -140,7 +139,7 @@ def train_net_coco(net, args):
 
                 # Evaluation round
                 # division_step = (n_train // (5 * batch_size)) # was 10 * batch_size
-                division_step = (n_train // (1 * args.batch_size))
+                division_step = (n_train // (1 * args.train.batch_size))
                 if division_step > 0 and global_step_ct % division_step == 0:
                     '''
                     histograms = {}
@@ -149,7 +148,7 @@ def train_net_coco(net, args):
                         histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
                         histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
                     '''
-                    val_score, iou_metrics = evaluate(net, val_loader, args, args.device, dice_loss)
+                    val_score, iou_metrics = evaluate(net, val_loader, args, dice_loss)
 
                     if val_score >= best_val:
                         print(f'Validation score {val_score}')
@@ -158,13 +157,13 @@ def train_net_coco(net, args):
                         best_val = val_score
 
                         if best_val < max_val_to_save:
-                            p = Path(args.dir_checkpoint)
+                            p = Path(args.management.dir_checkpoint)
                             p.mkdir(parents=True, exist_ok=True)
                             # save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}.pth'
                             save_name = f'checkpoint_step_{global_step_ct}_epoch_{epoch}_valscore_{val_score:.4f}'
                             path_to_best_model = str(p / save_name)
 
-                            if args.model_name == 'hf':
+                            if args.model.name == 'hf':
                                 net.model.save_pretrained(path_to_best_model, from_pt=True)
                             else:
                                 path_to_best_model = path_to_best_model+'.pth'
@@ -177,11 +176,11 @@ def train_net_coco(net, args):
                 else:
                     wandb.log(metrics)
     
-    if args.model_name == 'hf':
+    if args.model.name == 'hf':
         net.model = net.model.from_pretrained(path_to_best_model)
     else:
         net.load_state_dict(torch.load(path_to_best_model))
-    net.to(args.device)
+    net.to(args.train.device)
     net.eval()
     display_results(net, val_set, args, wandb)
 
@@ -190,16 +189,16 @@ def train_net_coco(net, args):
 
 def test(args):
     net_best = get_model(args)
-    if args.model_name == 'hf':
+    if args.model.name == 'hf':
         net_best.model = net_best.model.from_pretrained(args.path_to_best)
     else:
-        net_best.load_state_dict(torch.load(args.path_to_best))
-    net_best.to(args.device)
+        net_best.load_state_dict(torch.load(args.management.path_to_best))
+    net_best.to(args.train.device)
     net_best.eval()
 
     dice_loss, _ = get_criterion(args)
     test_loader = get_test_data_loader(args)
-    test_metric, iou_metrics = evaluate(net_best, test_loader, args, args.device, dice_loss)
+    test_metric, iou_metrics = evaluate(net_best, test_loader, args, dice_loss)
 
     print(test_metric)
     print(iou_metrics)
@@ -210,11 +209,11 @@ def segmentation_output(args, names, labels, sizes):
     #  OOPS.  JUST REMEMBERED THAT THIS NEEDS INFORMATION ABOUT THE ORIGINAL DIMENSIONS.
     num_images = len(names)
     assert num_images == labels.size()[0]
-    os.makedirs(args.inference_mask_dir, exist_ok=True)
+    os.makedirs(args.data.inference_mask_dir, exist_ok=True)
 
     for name, label, size in zip(names, labels, sizes):
         bin_im = size_and_crop_to_original(bin_im, size[0], size[1])
-        fp = os.path.join(args.inference_mask_dir, name, args.mask_suffix)
+        fp = os.path.join(args.data.inference_mask_dir, name, args.data.mask_suffix)
         save_image(bin_im, fp)
 
 
@@ -224,8 +223,8 @@ def inference(args):
     NOT TESTED
     '''
     net_best = get_model(args)
-    net_best.load_state_dict(torch.load(args.path_to_best))
-    net_best.to(args.device)
+    net_best.load_state_dict(torch.load(args.management.path_to_best))
+    net_best.to(args.train.device)
     net_best.eval()
     inference_loader = get_test_data_loader(args)
     num_val_batches = len(inference_loader)
@@ -233,7 +232,7 @@ def inference(args):
     # iterate over the validation set
     for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
         image, name, im_size = batch
-        image = image.to(device=args.device, dtype=torch.float32)
+        image = image.to(device=args.train.device, dtype=torch.float32)
 
         with torch.no_grad():
             logits = net_best(image)
@@ -253,15 +252,15 @@ def main(args):
     cfg.merge_from_list(args.opts)
     """
     
-    args.train_dir = f'{args.data.source}/train'
-    args.val_dir = f'{args.data.source}/val'
-    args.test_dir = f'{args.data.source}/test'
-    args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(args.device)
+    args.data.train_dir = f'{args.data.source}/train'
+    args.data.val_dir = f'{args.data.source}/val'
+    args.data.test_dir = f'{args.data.source}/test'
+    args.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(args.train.device)
 
-    if args.processing_stage == 'Train':
+    if args.management.processing_stage == 'Train':
         model = get_model(args)
-        model = model.to(args.device)
+        model = model.to(args.train.device)
         path_to_best = train_net_coco(model, args)
         print(f"Best model saved in {path_to_best}")
     elif args.processing_stage == 'Test':

@@ -10,4 +10,4 @@ MODELS = {
 
 def get_model(args):
     # Initialize all other models
-    return MODELS[args.model_name](args)
+    return MODELS[args.model.name](args)

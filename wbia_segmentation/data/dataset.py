@@ -55,8 +55,8 @@ class SegDataset(Dataset):
         Finally, there is a one-to-one correspondence between image file and mask image
         files.
         '''
-        self.training_percent = args.training_percent
-        self.model_name = args.model_name
+        self.training_percent = args.data.training_percent
+        self.model_name = args.model.name
         self.images_dir = Path(images_dir)
         self.transform = transform
         file_names = listdir(images_dir)

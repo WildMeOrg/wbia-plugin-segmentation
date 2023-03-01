@@ -70,11 +70,11 @@ def build_train_val_transforms(args):
         transform_te: transformation function for testing
     """
     transform_tr = build_transforms(
-        img_height=args.img_height, img_width=args.img_width, transforms=args.transforms_train, norm_mean=args.norm_mean, norm_std=args.norm_std
+        img_height=args.data.img_height, img_width=args.data.img_width, transforms=args.data.transforms_train, norm_mean=args.data.norm_mean, norm_std=args.data.norm_std
     )
 
     transform_te = build_transforms(
-        img_height=args.img_height, img_width=args.img_width, transforms=args.transforms_test, norm_mean=args.norm_mean, norm_std=args.norm_std
+        img_height=args.data.img_height, img_width=args.data.img_width, transforms=args.data.transforms_test, norm_mean=args.data.norm_mean, norm_std=args.data.norm_std
     )
     return transform_tr, transform_te
 
