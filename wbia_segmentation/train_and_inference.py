@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import logging
 import math as m
-from argparse import Namespace
+import argparse
 from tqdm import tqdm
 import wandb
 
@@ -243,62 +243,18 @@ def inference(args):
 
 
 
-def main():
-    args = Namespace()
-    
-    # Management
-    args.wandb_project_name = "test-project"
-    args.dir_checkpoint = "./checkpoints"
-    args.save_checkpoint = False
-    args.path_to_best = ''
-    args.processing_stage= 'Train' # OR 'Test' OR 'Inference' 
-    
-    # Data
-    args.dataset_name = 'snowleopard_v2'
+def main(args):    
     args.train_dir = f'{args.dataset_name}/train'
     args.val_dir = f'{args.dataset_name}/val'
     args.test_dir = f'{args.dataset_name}/test'
-    args.inference_dir = './inference'  # NEW
-    args.mask_suffix = '_mask.png'         # NEW
-    args.inference_mask_dir = './mask_results'
-    args.training_percent = None
-
-    args.num_workers = 2
-    args.img_height = 400
-    args.img_width = 400
-    args.transforms_train = ["random_rotation", "random_crop"]
-    args.transforms_test = 'center_crop'
-    args.transforms_inference = 'resize'
-    args.norm_mean = None
-    args.norm_std = None
-
-    # Model
-    args.model_name = "hf"
-    args.model_path = "nvidia/mit-b2"
-    args.n_channels = 3
-    args.n_classes = 2
-    args.bilinear = False
-    args.id2label = {0: "background", 1: "foreground"}
-    args.label2id = {"background": 0, "foreground": 1}
-
-    # Training
-    args.epochs = 25
-    args.batch_size = 2
-    args.optim = "adamw"
-    args.scheduler = "linear"
-    args.scheduler_patience = 2
-    args.lr = 1e-5
-    args.amp = False
-
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(args.device)
 
-    model = get_model(args)
-    model = model.to(args.device)
-
     if args.processing_stage == 'Train':
+        model = get_model(args)
+        model = model.to(args.device)
         path_to_best = train_net_coco(model, args)
-        print(path_to_best)
+        print(f"Best model saved in {path_to_best}")
     elif args.processing_stage == 'Test':
         test(args)
     elif args.processing_stage == 'Inference':
@@ -306,4 +262,17 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument('--cfg', type=str, default='', help='path to config file')
+
+    parser.add_argument(
+        'opts',
+        default=None,
+        nargs=argparse.REMAINDER,
+        help='Modify config options using the command-line',
+    )
+    args = parser.parse_args()
+
+    main(args)

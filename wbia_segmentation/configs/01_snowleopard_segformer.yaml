@@ -1,0 +1,39 @@
+management:
+  args.wandb_project_name: "segmentation"
+  args.dir_checkpoint: "./checkpoints"
+  args.save_checkpoint: False
+  args.path_to_best: ''
+  args.processing_stage: 'Train' # OR 'Test' OR 'Inference'
+
+model:
+  name: 'hf'
+  hf_path: 'nvidia/mit-b2'
+  n_channels: 3
+  n_classes: 2
+  bilinear: False
+  id2label: {0: "background", 1: "foreground"}
+  label2id: {"background": 0, "foreground": 1}
+
+data:
+  source: 'snowleopard_v2'
+  inference_dir: './inference'
+  mask_suffix: '_mask.png'
+  inference_mask_dir: './mask_results'
+  training_percent: None
+  num_workers: 2
+  img_height: 400
+  img_width: 400
+  transforms_train: ["random_rotation", "random_crop"]
+  transforms_test: 'center_crop'
+  transforms_inference: 'resize'
+  norm_mean: None
+  norm_std: None
+
+train:
+  args.epochs: 25
+  args.batch_size: 2
+  args.optim: "adamw"
+  args.scheduler: "linear"
+  args.scheduler_patience: 2
+  args.lr: 1e-5
+  args.amp: False
