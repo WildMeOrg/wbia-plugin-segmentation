@@ -177,7 +177,7 @@ def train_net_coco(net, args):
                     wandb.log(metrics)
     
     if args.model_name == 'hf':
-        net.model.from_pretrained(path_to_best_model)
+        net.model = net.model.from_pretrained(path_to_best_model)
     else:
         net.load_state_dict(torch.load(path_to_best_model))
     net.to(args.device)
@@ -189,13 +189,16 @@ def train_net_coco(net, args):
 
 def test(args):
     net_best = get_model(args)
-    net_best.load_state_dict(torch.load(args.path_to_best))
+    if args.model_name == 'hf':
+        net_best.model = net_best.model.from_pretrained(args.path_to_best)
+    else:
+        net_best.load_state_dict(torch.load(args.path_to_best))
     net_best.to(args.device)
     net_best.eval()
 
     dice_loss, _ = get_criterion(args)
     test_loader = get_test_data_loader(args)
-    test_metric, iou_metrics = evaluate(net_best, test_loader, args.device, dice_loss)
+    test_metric, iou_metrics = evaluate(net_best, test_loader, args, args.device, dice_loss)
 
     print(test_metric)
     print(iou_metrics)
