@@ -11,7 +11,7 @@ def get_data_loaders(args):
     val_set = SegDataset(args.data.val_dir, args, test_transforms)
 
     # 2. Create data loaders
-    loader_args = dict(batch_size=args.train.batch_size, num_workers=args.train.num_workers, pin_memory=True)
+    loader_args = dict(batch_size=args.train.batch_size, num_workers=args.data.num_workers, pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
@@ -23,7 +23,7 @@ def get_test_data_loader(args):
     test_set = SegDataset(args.train.test_dir, args, test_transforms)
 
     # 2. Create data loaders
-    loader_args = dict(batch_size=args.train.batch_size, num_workers=args.train.num_workers, pin_memory=True)
+    loader_args = dict(batch_size=args.train.batch_size, num_workers=args.data.num_workers, pin_memory=True)
     test_loader = DataLoader(test_set, shuffle=False, drop_last=True, **loader_args)
 
     return test_loader
