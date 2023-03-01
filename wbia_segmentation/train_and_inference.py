@@ -245,15 +245,17 @@ def inference(args):
 
 
 def main(args):
-    cfg = get_default_config()
+    args = get_default_config()
 
+    """
     if args.cfg:
         cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
-
-    args.train_dir = f'{args.dataset.source}/train'
-    args.val_dir = f'{args.dataset.source}/val'
-    args.test_dir = f'{args.dataset.source}/test'
+    """
+    
+    args.train_dir = f'{args.data.source}/train'
+    args.val_dir = f'{args.data.source}/val'
+    args.test_dir = f'{args.data.source}/test'
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(args.device)
 
