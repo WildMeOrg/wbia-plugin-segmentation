@@ -190,7 +190,7 @@ def train_net_coco(net, args):
 def test(args):
     net_best = get_model(args)
     if args.model.name == 'hf':
-        net_best.model = net_best.model.from_pretrained(args.path_to_best)
+        net_best.model = net_best.model.from_pretrained(args.management.path_to_best)
     else:
         net_best.load_state_dict(torch.load(args.management.path_to_best))
     net_best.to(args.train.device)
