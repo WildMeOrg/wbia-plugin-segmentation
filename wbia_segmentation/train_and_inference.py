@@ -263,9 +263,9 @@ def main(args):
         model = model.to(args.train.device)
         path_to_best = train_net_coco(model, args)
         print(f"Best model saved in {path_to_best}")
-    elif args.processing_stage == 'Test':
+    elif args.management.processing_stage == 'Test':
         test(args)
-    elif args.processing_stage == 'Inference':
+    elif args.management.processing_stage == 'Inference':
         inference(args)
 
 
