@@ -17,7 +17,6 @@ def get_default_config():
     cfg.model = Namespace()
     cfg.model.name = 'hf'
     cfg.model.hf_path = 'nvidia/mit-b2'
-    cfg.model.n_channels = 3
     cfg.model.n_classes = 2
     cfg.model.bilinear = False
     cfg.model.id2label = {0: "background", 1: "foreground"}
@@ -31,6 +30,7 @@ def get_default_config():
     cfg.data.inference_mask_dir = './mask_results'
     cfg.data.training_percent = None
     cfg.data.num_workers = 2
+    cfg.data.n_channels = 3
     cfg.data.img_height = 400
     cfg.data.img_width = 400
     cfg.data.transforms_train = ["random_rotation", "random_crop"]
