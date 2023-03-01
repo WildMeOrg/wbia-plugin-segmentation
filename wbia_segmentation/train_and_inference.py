@@ -20,6 +20,7 @@ from utils.optimization import (
 from data.helpers import get_data_loaders, get_test_data_loader
 from utils.utils import display_results, mean_iou
 from data.transforms import size_and_crop_to_original
+from default_config import get_default_config
 
 
 def evaluate(net, dataloader, args, device, loss):
@@ -243,10 +244,16 @@ def inference(args):
 
 
 
-def main(args):    
-    args.train_dir = f'{args.dataset_name}/train'
-    args.val_dir = f'{args.dataset_name}/val'
-    args.test_dir = f'{args.dataset_name}/test'
+def main(args):
+    cfg = get_default_config()
+
+    if args.cfg:
+        cfg.merge_from_file(args.cfg)
+    cfg.merge_from_list(args.opts)
+
+    args.train_dir = f'{args.dataset.source}/train'
+    args.val_dir = f'{args.dataset.source}/val'
+    args.test_dir = f'{args.dataset.source}/test'
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(args.device)
 
