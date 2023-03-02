@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import yaml
+from yaml.loader import SafeLoader
 
 import evaluate
 
@@ -84,3 +86,12 @@ def display_results(net, dset, args, wandb):
             table.add_data(names[i], mask_img)
     
     wandb.log({"Validation results" : table})
+
+
+def merge_from_file(args):
+    with open(args.cfg) as f:
+        cfg = yaml.load(f, Loader=SafeLoader)
+    
+    for group_key, group_value in cfg.items():
+        for key, value in group_value.items():
+            args[group_key][key] = value

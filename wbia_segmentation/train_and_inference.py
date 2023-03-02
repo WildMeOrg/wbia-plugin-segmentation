@@ -18,7 +18,7 @@ from utils.optimization import (
     get_scheduler
 )
 from data.helpers import get_data_loaders, get_test_data_loader
-from utils.utils import display_results, mean_iou
+from utils.utils import display_results, mean_iou, merge_from_file
 from data.transforms import size_and_crop_to_original
 from default_config import get_default_config
 
@@ -246,11 +246,8 @@ def inference(args):
 def main(args):
     args = get_default_config()
 
-    """
     if args.cfg:
-        cfg.merge_from_file(args.cfg)
-    cfg.merge_from_list(args.opts)
-    """
+        merge_from_file(args)
     
     args.data.train_dir = f'{args.data.source}/train'
     args.data.val_dir = f'{args.data.source}/val'
