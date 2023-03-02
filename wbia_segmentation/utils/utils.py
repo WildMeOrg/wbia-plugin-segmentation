@@ -88,8 +88,8 @@ def display_results(net, dset, args, wandb):
     wandb.log({"Validation results" : table})
 
 
-def merge_from_file(args, params):
-    with open(params.cfg) as f:
+def merge_from_file(args, cfg_path):
+    with open(cfg_path) as f:
         cfg = yaml.load(f, Loader=SafeLoader)
     
     for group_key, group_value in cfg.items():
