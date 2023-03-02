@@ -1,9 +1,9 @@
 management:
-  args.wandb_project_name: "segmentation"
-  args.dir_checkpoint: "./checkpoints"
-  args.save_checkpoint: False
-  args.path_to_best: ''
-  args.processing_stage: 'Train' # OR 'Test' OR 'Inference'
+  wandb_project_name: "segmentation"
+  dir_checkpoint: "./checkpoints"
+  save_checkpoint: False
+  path_to_best: ''
+  processing_stage: 'Train' # OR 'Test' OR 'Inference'
 
 model:
   name: 'hf'
@@ -30,10 +30,10 @@ data:
   norm_std: None
 
 train:
-  args.epochs: 25
-  args.batch_size: 2
-  args.optim: "adamw"
-  args.scheduler: "linear"
-  args.scheduler_patience: 2
-  args.lr: 1e-5
-  args.amp: False
+  epochs: 25
+  batch_size: 2
+  optim: "adamw"
+  scheduler: "linear"
+  scheduler_patience: 2
+  lr: 1e-5
+  amp: False
