@@ -96,7 +96,9 @@ def merge_from_file(args, cfg_path):
     args = vars(args)
     
     for group_key, group_value in cfg.items():
+        group_args = vars(args[group_key])
         for key, value in group_value.items():
-            args[group_key][key] = value
+            group_args[key] = value
+        args[group_key] = Namespace(**group_args)
     
     return Namespace(**args)
