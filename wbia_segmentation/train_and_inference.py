@@ -247,7 +247,7 @@ def main(params):
     args = get_default_config()
 
     if params.cfg:
-        merge_from_file(args, params.cfg)
+        args = merge_from_file(args, params.cfg)
     
     args.data.train_dir = f'{args.data.source}/train'
     args.data.val_dir = f'{args.data.source}/val'

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import yaml
 from yaml.loader import SafeLoader
+from argparse import Namespace
 
 import evaluate
 
@@ -92,6 +93,10 @@ def merge_from_file(args, cfg_path):
     with open(cfg_path) as f:
         cfg = yaml.load(f, Loader=SafeLoader)
     
+    args = vars(args)
+    
     for group_key, group_value in cfg.items():
         for key, value in group_value.items():
             args[group_key][key] = value
+    
+    return Namespace(**args)
