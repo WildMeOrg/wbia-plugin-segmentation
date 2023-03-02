@@ -243,11 +243,11 @@ def inference(args):
 
 
 
-def main(args):
+def main(params):
     args = get_default_config()
 
-    if args.cfg:
-        merge_from_file(args)
+    if params.cfg:
+        merge_from_file(args, params.cfg)
     
     args.data.train_dir = f'{args.data.source}/train'
     args.data.val_dir = f'{args.data.source}/val'

@@ -1,4 +1,4 @@
 wandb
 evaluate
 transformers
-yacs
+pyyaml
