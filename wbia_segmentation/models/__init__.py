@@ -1,5 +1,5 @@
-from models.unet import UNet
-from models.hf import HfTransformer
+from .unet import UNet
+from .hf import HfTransformer
 
 
 MODELS = {

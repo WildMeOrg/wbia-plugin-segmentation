@@ -67,8 +67,8 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     species = ibs.get_annot_species_texts(aid_list[0])
 
     # Load config
-    if config is None:
-        config = CONFIGS[species]
+    #if config is None:
+    #    config = CONFIGS[species]
     cfg = _load_config(config)
 
     # Load model
@@ -96,13 +96,15 @@ def _load_config(config_url):
     r"""
     Load a configuration file
     """
-    config_fname = config_url.split('/')[-1]
-    config_file = ut.grab_file_url(
-        config_url, appname='wbia_segmentation', check_hash=True, fname=config_fname
-    )
-
     args = get_default_config()
-    args = merge_from_file(args, config_file)
+
+    if config_url:
+        config_fname = config_url.split('/')[-1]
+        config_file = ut.grab_file_url(
+            config_url, appname='wbia_segmentation', check_hash=True, fname=config_fname
+        )
+
+        args = merge_from_file(args, config_file)
     
     return args
 
