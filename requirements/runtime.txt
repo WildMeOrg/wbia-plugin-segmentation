@@ -1,0 +1,15 @@
+efficientnet-pytorch
+matplotlib
+numpy
+scikit-image
+tensorboard
+torch>=1.7
+torchvision>=0.8
+wandb
+evaluate
+transformers
+tqdm
+wbia-utool
+wbia-utool
+wildbook-ia
+pyyaml

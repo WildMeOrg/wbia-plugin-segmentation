@@ -28,8 +28,41 @@ CONFIGS = {}
 MODELS = {}
 
 
+"""
+>>> import wbia_segmentation
+>>> from wbia_segmentation._plugin import DEMOS, CONFIGS, MODELS
+>>> species = 'whale_shark'
+>>> test_ibs = wbia_segmentation._plugin.wbia_segmentation_test_ibs(DEMOS[species], species, 'test2021')
+>>> aid_list = test_ibs.get_valid_aids(species=species)
+>>> result = test_ibs.register_segmentations(aid_list, CONFIGS[species], use_depc=False)
+"""
+
+"""
 @register_ibs_method
-def segmentation_compute_mask(ibs, aid_list, config=None, multithread=False):
+def register_segmentations(ibs, aid_list, config, use_depc=False):
+
+    aid_list = ibs.get_valid_aids(species=species)
+
+    predicted_masks = ibs._compute_segmentations(ibs, aid_list, config)
+
+    gpath_list = []
+    for pred_mask in predicted_masks:
+        im_fn = save(pred_mask)
+        gpath_list.append(im_fn)
+
+    seg_mask_gids = ibs.add_images(gpath_list, add_annots=True)
+    seg_mask_nids = ibs.add_names(names)
+
+    species = [species] * len(seg_mask_gids)
+    ibs.add_annots(
+                seg_mask_gids,
+                species_list=species,
+                nid_list=seg_mask_nids,
+            )
+"""
+
+@register_ibs_method
+def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     # Get species from the first annotation
     species = ibs.get_annot_species_texts(aid_list[0])
 
@@ -104,8 +137,8 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
     # TODO: Define transforms
     test_transform = None
 
-    image_paths = ibs.get_annot_image_paths(aid_list)
-    names = ibs.get_annot_name_rowids(aid_list)
+    image_paths = ibs.get_annot_image_paths(aid_list) # ['/data/db/_ibsdb/images/05ccb87c-dcfe-468b-3be4-d89018d4aa73.jpg', ... ]
+    names = ibs.get_annot_name_rowids(aid_list) # [-1, -2, ...]
     target_imsize = (cfg.data.height, cfg.data.width)
 
     dataset = SegDataset(cfg.data.train_dir, cfg, test_transform)
@@ -126,6 +159,10 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
     print('Loaded {} images for model evaluation'.format(len(dataset)))
 
     return dataloader, dataset
+
+
+def wbia_segmentation_test_ibs(demo_db_url, species, subset):
+    pass
 
 
 if __name__ == '__main__':

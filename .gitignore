@@ -1,3 +1,10 @@
 # vscode
 
 *.code-workspace
+
+# Python
+
+*.eggs
+*.egg-info
+**/__pycache__
+**/*.pyc
