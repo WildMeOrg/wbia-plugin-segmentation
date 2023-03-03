@@ -113,6 +113,7 @@ def _load_model(cfg, model_url):
     r"""
     Load a model based on config file
     """
+    cfg.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Building model: {}'.format(cfg.model.name))
     model = get_model(cfg)
 
