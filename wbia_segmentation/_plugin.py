@@ -3,8 +3,11 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import utool as ut
 import logging
+import os
+
 import torch
 import torchvision.transforms as T
+from torchvision.utils import save_image
 
 from wbia.control import controller_inject
 
@@ -60,18 +63,17 @@ MODELS = {}
 
 """
 
-"""
 @register_ibs_method
-def register_segmentations(ibs, aid_list, config, use_depc=False):
+def register_segmentations(ibs, aid_list, config_url, use_depc=False):
 
-    aid_list = ibs.get_valid_aids(species=species)
-
-    predicted_masks = ibs._compute_segmentations(ibs, aid_list, config)
+    aid_list = ibs.get_valid_aids()
+    predicted_masks, names, cfg = ibs._compute_segmentations(ibs, aid_list, config_url)
 
     gpath_list = []
-    for pred_mask in predicted_masks:
-        im_fn = save(pred_mask)
-        gpath_list.append(im_fn)
+    for pred_mask, name in zip(predicted_masks, names):
+        mask_fp = os.path.join(cfg.data.inference_mask_dir, name, cfg.data.mask_suffix)
+        save_image(pred_mask, mask_fp)
+        gpath_list.append(mask_fp)
 
     seg_mask_gids = ibs.add_images(gpath_list, add_annots=True)
     seg_mask_nids = ibs.add_names(names)
@@ -82,40 +84,43 @@ def register_segmentations(ibs, aid_list, config, use_depc=False):
                 species_list=species,
                 nid_list=seg_mask_nids,
             )
-"""
+
 
 @register_ibs_method
-def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
+def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
     # Get species from the first annotation
     species = ibs.get_annot_species_texts(aid_list[0])
 
     # Load config
-    #if config is None:
-    #    config = CONFIGS[species]
-    cfg = _load_config(config)
+    if config_url is None:
+        cfg = _load_config()
+    else:
+        cfg = _load_config(config_url)
 
     # Load model
     model = _load_model(cfg, MODELS[species])
 
     # Preprocess images to model input
-    test_loader, test_dataset = _load_data(ibs, aid_list, cfg, multithread)
+    test_loader, _ = _load_data(ibs, aid_list, cfg, multithread)
 
     # Compute segmentation masks
     seg_masks = []
+    names_list = []
     model.eval()
+    
     with torch.no_grad():
         for images, names, image_sizes in test_loader:
             if cfg.use_gpu:
                 images = images.cuda(non_blocking=True)
 
-            output = model(images.float())
-            seg_masks.append(output.detach().cpu().numpy())
+            output = model.predict(images.float())
+            seg_masks.extend(output.argmax(dim=1).detach().cpu().numpy())
+            names_list.extend(names)
 
-    seg_masks = np.concatenate(seg_masks)
-    return seg_masks
+    return seg_masks, names_list, cfg
 
 
-def _load_config(config_url):
+def _load_config(config_url=None):
     r"""
     Load a configuration file
     """
@@ -132,7 +137,7 @@ def _load_config(config_url):
     return args
 
 
-def _load_model(cfg, model_url):
+def _load_model(cfg, model_url=None):
     r"""
     Load a model based on config file
     """
@@ -141,18 +146,21 @@ def _load_model(cfg, model_url):
     model = get_model(cfg)
 
     # Download the model weights
-    model_fname = model_url.split('/')[-1]
-    model_path = ut.grab_file_url(
-        model_url, appname='wbia_segmentation', check_hash=True, fname=model_fname
-    )
+    if model_url:
+        model_fname = model_url.split('/')[-1]
+        model_path = ut.grab_file_url(
+            model_url, appname='wbia_segmentation', check_hash=True, fname=model_fname
+        )
+    else:
+        model_path = cfg.test.path_to_model
 
     if cfg.model.name == "hf":
         model.model = model.model.from_pretrained(model_path)
     else:
         load_pretrained_weights(model, model_path)
 
-    if cfg.use_gpu:
-        model = model.cuda()
+    model = model.to(cfg.train.device)
+
     return model
 
 

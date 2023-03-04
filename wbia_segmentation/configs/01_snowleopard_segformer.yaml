@@ -2,7 +2,6 @@ management:
   wandb_project_name: "segmentation"
   dir_checkpoint: "./checkpoints"
   save_checkpoint: False
-  path_to_best: ''
   processing_stage: 'Train' # OR 'Test' OR 'Inference'
 
 model:
@@ -37,3 +36,7 @@ train:
   scheduler_patience: 2
   lr: 1.0e-5
   amp: False
+
+test:
+  path_to_best: ''
+  batch_size: 2
