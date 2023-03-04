@@ -49,6 +49,7 @@ MODELS = {}
 >>> cfg = get_default_config()
 >>> cfg.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 >>> model = get_model(cfg)
+>>> model = model.to(cfg.train.device)
 
 >>> dataset = InferenceSegDataset(image_paths, cfg, test_transform)
 >>> num_workers = cfg.data.num_workers
@@ -66,13 +67,12 @@ MODELS = {}
 @register_ibs_method
 def register_segmentations(ibs, aid_list, config_url, use_depc=False):
 
-    aid_list = ibs.get_valid_aids()
     predicted_masks, names, cfg = ibs._compute_segmentations(ibs, aid_list, config_url)
 
     gpath_list = []
     for pred_mask, name in zip(predicted_masks, names):
-        mask_fp = os.path.join(cfg.data.inference_mask_dir, name, cfg.data.mask_suffix)
-        save_image(pred_mask, mask_fp)
+        mask_fp = os.path.join(cfg.data.inference_mask_dir, name)+cfg.data.mask_suffix
+        save_image(pred_mask.float(), mask_fp)
         gpath_list.append(mask_fp)
 
     seg_mask_gids = ibs.add_images(gpath_list, add_annots=True)
@@ -110,11 +110,10 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
     
     with torch.no_grad():
         for images, names, image_sizes in test_loader:
-            if cfg.use_gpu:
-                images = images.cuda(non_blocking=True)
+            images = images.to(cfg.train.device)
 
             output = model.predict(images.float())
-            seg_masks.extend(output.argmax(dim=1).detach().cpu().numpy())
+            seg_masks.extend(output.argmax(dim=1).detach().cpu())
             names_list.extend(names)
 
     return seg_masks, names_list, cfg
@@ -214,3 +213,9 @@ if __name__ == '__main__':
     import utool as ut  # NOQA
 
     ut.doctest_funcs()
+
+gpath_list = []
+for pred_mask, name in zip(seg_masks, names_list):
+    mask_fp = os.path.join(cfg.data.inference_mask_dir, name, cfg.data.mask_suffix)
+    save_image(pred_mask, mask_fp)
+    gpath_list.append(mask_fp)
