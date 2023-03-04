@@ -20,6 +20,8 @@ class HfTransformer(nn.Module):
             size={"height": args.data.img_height, "width": args.data.img_width}
         )
 
+        self.sm = torch.nn.Softmax(dim=1)
+
     def forward(self, img, mask):
         img = [x for x in img]
         mask = [x for x in mask]
@@ -35,3 +37,20 @@ class HfTransformer(nn.Module):
         )
 
         return logits, img_mask_processed['labels'].to(device=self.device, dtype=torch.long)
+
+    def predict(self, img):
+        img = [x for x in img]
+        img_processed = self.image_processor(images=img, return_tensors="pt", do_reduce_labels=False)
+        img_processed = img_processed['pixel_values'].to(self.device)
+        pred_mask = self.model(img_processed)
+
+        logits = nn.functional.interpolate(
+            pred_mask.logits,
+            size=(self.img_height, self.img_width),
+            mode="bilinear",
+            align_corners=False,
+        )
+        mask_probs = self.sm(logits)
+        pred_mask = mask_probs.argmax(dim=1)
+        
+        return mask_probs

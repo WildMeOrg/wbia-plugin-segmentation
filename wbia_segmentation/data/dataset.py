@@ -131,7 +131,6 @@ class SegDataset(Dataset):
         return im, mask, self.names[idx]
 
 
-
 class InferenceSegDataset(Dataset):
     def __init__(self, image_fns, cfg, transform=None):
         self.model_name = cfg.model.name

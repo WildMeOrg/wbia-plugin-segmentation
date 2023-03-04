@@ -104,7 +104,7 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     seg_masks = []
     model.eval()
     with torch.no_grad():
-        for images, names in test_loader:
+        for images, names, image_sizes in test_loader:
             if cfg.use_gpu:
                 images = images.cuda(non_blocking=True)
 
