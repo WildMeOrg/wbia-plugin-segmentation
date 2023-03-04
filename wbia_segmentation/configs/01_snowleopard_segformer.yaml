@@ -35,5 +35,5 @@ train:
   optim: "adamw"
   scheduler: "linear"
   scheduler_patience: 2
-  lr: 1e-5
+  lr: 1.0e-5
   amp: False
