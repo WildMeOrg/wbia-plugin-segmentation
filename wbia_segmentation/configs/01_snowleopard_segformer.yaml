@@ -18,7 +18,7 @@ data:
   inference_dir: './inference'
   mask_suffix: '_mask.png'
   inference_mask_dir: './mask_results'
-  training_percent: None
+  training_percent: null
   num_workers: 2
   n_channels: 3
   img_height: 400
@@ -26,8 +26,8 @@ data:
   transforms_train: ["random_rotation", "random_crop"]
   transforms_test: 'center_crop'
   transforms_inference: 'resize'
-  norm_mean: None
-  norm_std: None
+  norm_mean: null
+  norm_std: null
 
 train:
   epochs: 25
