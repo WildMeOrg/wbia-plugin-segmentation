@@ -10,7 +10,6 @@ def get_default_config():
     cfg.management.wandb_project_name = "segmentation"
     cfg.management.dir_checkpoint = "./checkpoints"
     cfg.management.save_checkpoint = False
-    cfg.management.path_to_best = ''
     cfg.management.processing_stage = 'Train' # OR 'Test' OR 'Inference'
 
     # model
@@ -48,5 +47,10 @@ def get_default_config():
     cfg.train.scheduler_patience = 2
     cfg.train.lr = 1e-5
     cfg.train.amp = False
+
+    # test
+    cfg.test = Namespace()
+    cfg.test.path_to_best = ''
+    cfg.test.batch_size = 2
 
     return cfg

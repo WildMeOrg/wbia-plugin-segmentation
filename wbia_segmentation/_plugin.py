@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
-from wbia.control import controller_inject
 import numpy as np
 import utool as ut
+import logging
 import torch
-import torchvision.transforms as transforms
+import torchvision.transforms as T
+
+from wbia.control import controller_inject
 
 from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights
 from wbia_segmentation.default_config import get_default_config
 from wbia_segmentation.models import get_model
-from wbia_segmentation.data.dataset import SegDataset
+from wbia_segmentation.data.dataset import InferenceSegDataset
 
 (print, rrr, profile) = ut.inject2(__name__)
 
@@ -35,6 +37,27 @@ MODELS = {}
 >>> test_ibs = wbia_segmentation._plugin.wbia_segmentation_test_ibs(DEMOS[species], species, 'test2021')
 >>> aid_list = test_ibs.get_valid_aids(species=species)
 >>> result = test_ibs.register_segmentations(aid_list, CONFIGS[species], use_depc=False)
+"""
+
+"""
+>>> aid_list = ibs.get_valid_aids()
+>>> image_paths = ibs.get_annot_image_paths(aid_list)
+
+>>> cfg = get_default_config()
+>>> cfg.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+>>> model = get_model(cfg)
+
+>>> dataset = InferenceSegDataset(image_paths, cfg, test_transform)
+>>> num_workers = cfg.data.num_workers
+>>> dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=cfg.test.batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        drop_last=False,
+    )
+
 """
 
 """
@@ -137,17 +160,21 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
     r"""
     Load data, preprocess and create data loaders
     """
-    # TODO: Define transforms
-    test_transform = None
+    target_imsize = (cfg.data.img_height, cfg.data.img_width)
+
+    test_transform = T.Compose(
+        [
+            T.CenterCrop(max(target_imsize[0], target_imsize[1])),
+        ]
+    )
 
     image_paths = ibs.get_annot_image_paths(aid_list) # ['/data/db/_ibsdb/images/05ccb87c-dcfe-468b-3be4-d89018d4aa73.jpg', ... ]
     names = ibs.get_annot_name_rowids(aid_list) # [-1, -2, ...]
-    target_imsize = (cfg.data.height, cfg.data.width)
 
-    dataset = SegDataset(cfg.data.train_dir, cfg, test_transform)
+    dataset = InferenceSegDataset(image_paths, cfg, test_transform)
 
     if multithread:
-        num_workers = cfg.data.workers
+        num_workers = cfg.data.num_workers
     else:
         num_workers = 0
 
@@ -159,7 +186,7 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
         pin_memory=True,
         drop_last=False,
     )
-    print('Loaded {} images for model evaluation'.format(len(dataset)))
+    logging.info('Loaded {} images for model evaluation'.format(len(dataset)))
 
     return dataloader, dataset
 

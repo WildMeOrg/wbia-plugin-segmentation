@@ -2,8 +2,8 @@ from torchvision.io import read_image
 from torch.utils.data import Dataset
 import torch
 
+import os
 from os import listdir
-from os.path import splitext
 from os.path import join
 from pathlib import Path
 import logging
@@ -60,7 +60,7 @@ class SegDataset(Dataset):
         self.images_dir = Path(images_dir)
         self.transform = transform
         file_names = listdir(images_dir)
-        file_exts = [splitext(fn)[1].lower() for fn in file_names]
+        file_exts = [os.path.splitext(fn)[1].lower() for fn in file_names]
         allowed_exts = ['.jpg', '.jpeg', '.png']
         file_names = [fn
                       for fn, fe in zip(file_names, file_exts)
@@ -69,7 +69,7 @@ class SegDataset(Dataset):
                           for fn in file_names
                           if 'blend' not in fn and not fn.lower().endswith(mask_suffix)]
         self.image_fns.sort()
-        self.names = [splitext(im_fn)[0] for im_fn in self.image_fns]
+        self.names = [os.path.splitext(im_fn)[0] for im_fn in self.image_fns]
         self.mask_fns = [fn for fn in file_names if fn.lower().endswith(mask_suffix)]
         self.mask_fns.sort()
 
@@ -132,32 +132,27 @@ class SegDataset(Dataset):
 
 
 
-class InferenceDataset(Dataset):
-    def __init__(self, images_dir, transform=None):
-        self.images_dir = Path(images_dir)
+class InferenceSegDataset(Dataset):
+    def __init__(self, image_fns, cfg, transform=None):
+        self.model_name = cfg.model.name
         self.transform = transform
-        self.image_fns = [fn for fn in listdir(images_dir)   # NEED TO BE MORE GENERAL than just jpg
-                          if fn.lower().endswith('jpg')]
+        self.image_fns = image_fns
         self.image_fns.sort()
+        self.names = [os.path.splitext(im_fn)[0] for im_fn in self.image_fns]
         if not self.image_fns or len(self.image_fns) == 0:
-            raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
+            raise RuntimeError(f'No image filenames were specified or the list was empty, make sure you the db has images')
         logging.info(f'Creating inference dataset with {len(self.image_fns)} annotations')
 
     def __len__(self):
         return len(self.names)
 
-    def __get_item__(self, idx):
-        im_fn = join(self.images_dir, self.image_fns[idx])
-
+    def __getitem__(self, idx):
         if self.model_name == "hf":
-            im = read_image(im_fn)
+            im = read_image(self.image_fns[idx])
         else:
-            im = read_image(im_fn) / 255
+            im = read_image(self.image_fns[idx]) / 255
 
         if self.transform is not None:  # MAKE SURE THIS HAS PROPER RESIZE
             im = self.transform(im)
       
         return im, self.names[idx], (im.size()[-2], im.size()[-1])
-
-
-
