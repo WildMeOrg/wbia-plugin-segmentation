@@ -33,9 +33,9 @@ MODELS = {}
 
 
 @register_ibs_method
-def register_segmentations(ibs, aid_list, config_url, use_depc=False):
+def register_segmentations(ibs, aid_list, config_url=None, use_depc=False):
 
-    gpath_list, names = ibs._compute_segmentations(ibs, aid_list, config_url)
+    gpath_list, names = ibs._compute_segmentations(aid_list, config_url)
 
     seg_mask_gids = ibs.add_images(gpath_list, as_annots=True)
     seg_mask_nids = ibs.add_names(names)
