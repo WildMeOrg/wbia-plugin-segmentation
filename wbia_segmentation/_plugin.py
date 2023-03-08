@@ -63,7 +63,11 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
         cfg = _load_config(config_url)
 
     # Load model
-    model = _load_model(cfg, MODELS[species])
+    if species in MODELS:
+        model_url = MODELS[species]
+    else:
+        model_url = None
+    model = _load_model(cfg, model_url)
 
     # Create data loader with proper transformations
     test_loader, _ = _load_data(ibs, aid_list, cfg, multithread)
