@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
+from tqdm import tqdm
 import numpy as np
+from PIL import Image
+from numpy import asarray
 import utool as ut
 import logging
 import os
@@ -33,58 +36,24 @@ CONFIGS = {}
 MODELS = {}
 
 
-"""
->>> import wbia_segmentation
->>> from wbia_segmentation._plugin import DEMOS, CONFIGS, MODELS
->>> species = 'whale_shark'
->>> test_ibs = wbia_segmentation._plugin.wbia_segmentation_test_ibs(DEMOS[species], species, 'test2021')
->>> aid_list = test_ibs.get_valid_aids(species=species)
->>> result = test_ibs.register_segmentations(aid_list, CONFIGS[species], use_depc=False)
-"""
-
-"""
->>> aid_list = ibs.get_valid_aids()
->>> image_paths = ibs.get_annot_image_paths(aid_list)
-
->>> cfg = get_default_config()
->>> cfg.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
->>> model = get_model(cfg)
->>> model = model.to(cfg.train.device)
-
->>> dataset = InferenceSegDataset(image_paths, cfg, test_transform)
->>> num_workers = cfg.data.num_workers
->>> dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=cfg.test.batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=True,
-        drop_last=False,
-    )
-
-"""
-
 @register_ibs_method
 def register_segmentations(ibs, aid_list, config_url, use_depc=False):
 
-    predicted_masks, names, cfg = ibs._compute_segmentations(ibs, aid_list, config_url)
+    gpath_list, names = ibs._compute_segmentations(ibs, aid_list, config_url)
 
-    gpath_list = []
-    for pred_mask, name in zip(predicted_masks, names):
-        mask_fp = os.path.join(cfg.data.inference_mask_dir, name)+cfg.data.mask_suffix
-        save_image(pred_mask.float(), mask_fp)
-        gpath_list.append(mask_fp)
-
-    seg_mask_gids = ibs.add_images(gpath_list, add_annots=True)
+    seg_mask_gids = ibs.add_images(gpath_list, as_annots=True)
     seg_mask_nids = ibs.add_names(names)
-
+    """
     species = [species] * len(seg_mask_gids)
     ibs.add_annots(
                 seg_mask_gids,
                 species_list=species,
                 nid_list=seg_mask_nids,
+                bbox_list=[]
             )
+    """
 
+    return seg_mask_gids
 
 @register_ibs_method
 def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
@@ -100,36 +69,52 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
     # Load model
     model = _load_model(cfg, MODELS[species])
 
-    # Preprocess images to model input
+    # Create data loader with proper transformations
     test_loader, _ = _load_data(ibs, aid_list, cfg, multithread)
 
     # Compute segmentation masks
-    seg_masks = []
-    names_list = []
     model.eval()
-    
+    gpath_list = []
+    names = []
+    os.makedirs(cfg.data.inference_mask_dir, exist_ok=True)
+
     with torch.no_grad():
-        for images, names, image_sizes in test_loader:
+        for images, names, image_sizes in tqdm(test_loader):
             images = images.to(cfg.train.device)
-
             output = model.predict(images.float())
-            seg_masks.extend(output.argmax(dim=1).detach().cpu())
-            names_list.extend(names)
+            seg_masks = output.argmax(dim=1).detach().cpu()
+            
+            images = images.cpu()
+            for i in range(images.shape[0]):
+                im = images[0]
+                im = im.permute(1, 2, 0)
+                mask = seg_masks[0]
 
-    return seg_masks, names_list, cfg
+                overlayed_im = get_seg_overlay(im, mask)
+                image_uuid_name = names[i].split("/")[-1]
+                mask_fp = os.path.join(cfg.data.inference_mask_dir, image_uuid_name)+cfg.data.mask_suffix
+                overlayed_im.save(mask_fp)
+
+                gpath_list.append(mask_fp)
+                names.append(f"{image_uuid_name}_masked")
+    
+    return gpath_list, names
 
 
-def _load_config(config_url=None):
+def _load_config(config_name=None):
     r"""
     Load a configuration file
     """
     args = get_default_config()
 
-    if config_url:
+    if config_name:
+        """
         config_fname = config_url.split('/')[-1]
         config_file = ut.grab_file_url(
             config_url, appname='wbia_segmentation', check_hash=True, fname=config_fname
         )
+        """
+        config_file = f"/wbia/wbia-plugin-segmentation/wbia_segmentation/configs/{config_name}"
 
         args = merge_from_file(args, config_file)
     
@@ -171,7 +156,7 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
 
     test_transform = T.Compose(
         [
-            T.CenterCrop(max(target_imsize[0], target_imsize[1])),
+            T.Resize((target_imsize[0], target_imsize[1])),
         ]
     )
 
@@ -198,6 +183,17 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
     return dataloader, dataset
 
 
+def get_seg_overlay(image, seg):
+    color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
+    color_seg[seg == 1, :] = [216, 82, 24]
+
+    # Show image + mask
+    img = np.array(image) * 0.5 + color_seg * 0.5
+    img = img.astype(np.uint8)
+    img = Image.fromarray(img).convert('RGB')
+    return img
+
+
 def wbia_segmentation_test_ibs(demo_db_url, species, subset):
     pass
 
@@ -213,9 +209,3 @@ if __name__ == '__main__':
     import utool as ut  # NOQA
 
     ut.doctest_funcs()
-
-gpath_list = []
-for pred_mask, name in zip(seg_masks, names_list):
-    mask_fp = os.path.join(cfg.data.inference_mask_dir, name, cfg.data.mask_suffix)
-    save_image(pred_mask, mask_fp)
-    gpath_list.append(mask_fp)

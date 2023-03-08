@@ -212,7 +212,7 @@ def segmentation_output(args, names, labels, sizes):
     os.makedirs(args.data.inference_mask_dir, exist_ok=True)
 
     for name, label, size in zip(names, labels, sizes):
-        bin_im = size_and_crop_to_original(bin_im, size[0], size[1])
+        bin_im = size_and_crop_to_original(label, size[0], size[1])
         fp = os.path.join(args.data.inference_mask_dir, name, args.data.mask_suffix)
         save_image(bin_im, fp)
 

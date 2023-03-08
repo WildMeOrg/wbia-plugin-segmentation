@@ -74,8 +74,8 @@ def display_results(net, dset, args, wandb):
         '''
         At this point, probs, preds, masks should all be the same
         shape, specifically (num_to_show, width, height)
-        And, each should be binary. For the decisions and masks, 0 indicates
-        foreground, 1 indicates background.
+        And, each should be binary. For the decisions and masks, 1 indicates
+        foreground, 0 indicates background.
         '''
 
         for i in range(preds.shape[0]):
