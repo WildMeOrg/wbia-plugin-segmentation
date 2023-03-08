@@ -38,5 +38,5 @@ train:
   amp: False
 
 test:
-  path_to_best: ''
+  path_to_model: ''
   batch_size: 2

@@ -30,8 +30,8 @@ def get_default_config():
     cfg.data.training_percent = None
     cfg.data.num_workers = 2
     cfg.data.n_channels = 3
-    cfg.data.img_height = 400
-    cfg.data.img_width = 400
+    cfg.data.img_height = 500
+    cfg.data.img_width = 500
     cfg.data.transforms_train = ["random_rotation", "random_crop"]
     cfg.data.transforms_test = 'center_crop'
     cfg.data.transforms_inference = 'resize'
@@ -50,7 +50,7 @@ def get_default_config():
 
     # test
     cfg.test = Namespace()
-    cfg.test.path_to_best = ''
+    cfg.test.path_to_model = ''
     cfg.test.batch_size = 2
 
     return cfg
