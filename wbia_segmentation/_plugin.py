@@ -1,20 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 from tqdm import tqdm
-import numpy as np
-from PIL import Image
-from numpy import asarray
 import utool as ut
 import logging
 import os
 
 import torch
 import torchvision.transforms as T
-from torchvision.utils import save_image
 
 from wbia.control import controller_inject
 
-from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights
+from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights, get_seg_overlay
 from wbia_segmentation.default_config import get_default_config
 from wbia_segmentation.models import get_model
 from wbia_segmentation.data.dataset import InferenceSegDataset
@@ -181,17 +177,6 @@ def _load_data(ibs, aid_list, cfg, multithread=False):
     logging.info('Loaded {} images for model evaluation'.format(len(dataset)))
 
     return dataloader, dataset
-
-
-def get_seg_overlay(image, seg):
-    color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
-    color_seg[seg == 1, :] = [216, 82, 24]
-
-    # Show image + mask
-    img = np.array(image) * 0.5 + color_seg * 0.5
-    img = img.astype(np.uint8)
-    img = Image.fromarray(img).convert('RGB')
-    return img
 
 
 def wbia_segmentation_test_ibs(demo_db_url, species, subset):

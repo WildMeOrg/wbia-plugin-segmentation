@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
 import yaml
 from yaml.loader import SafeLoader
 from argparse import Namespace
@@ -92,6 +94,17 @@ def display_results(net, dset, args, wandb):
             table.add_data(names[i], mask_img)
     
     wandb.log({"Validation results" : table})
+
+
+def get_seg_overlay(image, seg):
+    color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
+    color_seg[seg == 1, :] = [216, 82, 24]
+
+    # Show image + mask
+    img = np.array(image) * 0.5 + color_seg * 0.5
+    img = img.astype(np.uint8)
+    img = Image.fromarray(img).convert('RGB')
+    return img
 
 
 def merge_from_file(args, cfg_path):
