@@ -46,4 +46,5 @@ $ embed --segmentation
 ```python
 aid_list = ibs.get_valid_aids()
 segmented_gid_list = ibs.register_segmentations(aid_list, config_url='01_snowleopard_segformer.yaml')
+segmented_image_paths = ibs.get_annot_image_paths(segmented_gid_list)
 ```

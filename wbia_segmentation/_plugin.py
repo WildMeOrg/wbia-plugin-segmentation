@@ -8,7 +8,9 @@ import os
 import torch
 import torchvision.transforms as T
 
+from wbia import dtool as dt
 from wbia.control import controller_inject
+from wbia.constants import ANNOTATION_TABLE
 
 from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights, get_seg_overlay
 from wbia_segmentation.default_config import get_default_config
@@ -31,25 +33,44 @@ CONFIGS = {}
 
 MODELS = {}
 
+class SegmentationConfig(dt.Config):  # NOQA
+    _param_info_list = [
+        ut.ParamInfo('config_path', default=None),
+    ]
+
 
 @register_ibs_method
-def register_segmentations(ibs, aid_list, config_url=None, use_depc=False):
+def register_segmentations(ibs, aid_list, config_url=None):
 
     gpath_list, names = ibs._compute_segmentations(aid_list, config_url)
 
     seg_mask_gids = ibs.add_images(gpath_list, as_annots=True)
-    seg_mask_nids = ibs.add_names(names)
-    """
-    species = [species] * len(seg_mask_gids)
-    ibs.add_annots(
-                seg_mask_gids,
-                species_list=species,
-                nid_list=seg_mask_nids,
-                bbox_list=[]
-            )
-    """
+    metadata_dict_list = [{"mask_name": n} for n in names]
+    ibs.set_annot_metadata(aid_list, metadata_dict_list)
 
-    return seg_mask_gids
+    return seg_mask_gids, names
+
+
+@register_preproc_annot(
+    tablename='SegmentationMask',
+    parents=[ANNOTATION_TABLE],
+    colnames=['seg_mask'],
+    coltypes=[str],
+    configclass=SegmentationConfig,
+    fname='segmentation',
+    chunksize=128,
+)
+@register_ibs_method
+def register_segmentations_depc(depc, aid_list, config_url=None):
+    ibs = depc.controller
+    seg_mask_gids, seg_names = register_segmentations(
+        ibs,
+        aid_list,
+        config_path=config_url,
+    )
+    for aid, name in zip(aid_list, seg_names):
+        yield (name,)
+
 
 @register_ibs_method
 def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
@@ -96,7 +117,7 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
                 overlayed_im.save(mask_fp)
 
                 gpath_list.append(mask_fp)
-                names.append(f"{image_uuid_name}_masked")
+                names.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
     
     return gpath_list, names
 
