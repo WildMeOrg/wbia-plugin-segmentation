@@ -98,7 +98,7 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
     model.eval()
     gpath_list = []
     names = []
-    seg_masks = []
+    seg_mask_list = []
     os.makedirs(cfg.data.inference_mask_dir, exist_ok=True)
 
     with torch.no_grad():
@@ -120,9 +120,9 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
 
                 gpath_list.append(mask_fp)
                 names.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
-                seg_masks.append(mask)
+                seg_mask_list.append(mask)
     
-    return gpath_list, names, seg_masks
+    return gpath_list, names, seg_mask_list
 
 
 def _load_config(config_name=None):
