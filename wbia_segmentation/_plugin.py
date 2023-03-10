@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
+import numpy as np
 from tqdm import tqdm
 import utool as ut
 import logging
@@ -42,20 +43,20 @@ class SegmentationConfig(dt.Config):  # NOQA
 @register_ibs_method
 def register_segmentations(ibs, aid_list, config_url=None):
 
-    gpath_list, names = ibs._compute_segmentations(aid_list, config_url)
+    gpath_list, names, seg_masks = ibs._compute_segmentations(aid_list, config_url)
 
     seg_mask_gids = ibs.add_images(gpath_list, as_annots=True)
-    metadata_dict_list = [{"mask_name": n} for n in names]
+    metadata_dict_list = [{"mask_name": n} for n in gpath_list]
     ibs.set_annot_metadata(aid_list, metadata_dict_list)
 
-    return seg_mask_gids, names
+    return seg_mask_gids, names, seg_masks
 
 
 @register_preproc_annot(
     tablename='SegmentationMask',
     parents=[ANNOTATION_TABLE],
     colnames=['seg_mask'],
-    coltypes=[str],
+    coltypes=[np.ndarray],
     configclass=SegmentationConfig,
     fname='segmentation',
     chunksize=128,
@@ -63,13 +64,13 @@ def register_segmentations(ibs, aid_list, config_url=None):
 @register_ibs_method
 def register_segmentations_depc(depc, aid_list, config_url=None):
     ibs = depc.controller
-    seg_mask_gids, seg_names = register_segmentations(
+    seg_mask_gids, seg_names, seg_masks = register_segmentations(
         ibs,
         aid_list,
         config_path=config_url,
     )
-    for aid, name in zip(aid_list, seg_names):
-        yield (name,)
+    for aid, mask in zip(aid_list, seg_masks):
+        yield (mask,)
 
 
 @register_ibs_method
@@ -97,6 +98,7 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
     model.eval()
     gpath_list = []
     names = []
+    seg_masks = []
     os.makedirs(cfg.data.inference_mask_dir, exist_ok=True)
 
     with torch.no_grad():
@@ -118,8 +120,9 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
 
                 gpath_list.append(mask_fp)
                 names.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
+                seg_masks.append(mask)
     
-    return gpath_list, names
+    return gpath_list, names, seg_masks
 
 
 def _load_config(config_name=None):
