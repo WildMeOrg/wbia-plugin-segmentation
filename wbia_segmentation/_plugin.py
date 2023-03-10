@@ -62,15 +62,11 @@ def register_segmentations(ibs, aid_list, config_url=None):
     chunksize=128,
 )
 @register_ibs_method
-def register_segmentations_depc(depc, aid_list, config_url=None):
+def register_segmentations_depc(depc, aid_list, config=None):
     ibs = depc.controller
-    seg_mask_gids, seg_names, seg_masks = register_segmentations(
-        ibs,
-        aid_list,
-        config_path=config_url,
-    )
+    gpath_list, names, seg_masks = _compute_segmentations(ibs, aid_list, config)
     for aid, mask in zip(aid_list, seg_masks):
-        yield (mask,)
+        yield (np.array(mask),)
 
 
 @register_ibs_method
@@ -120,7 +116,7 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
 
                 gpath_list.append(mask_fp)
                 names_list.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
-                seg_mask_list.append(mask)
+                seg_mask_list.append(mask.numpy())
     
     return gpath_list, names_list, seg_mask_list
 
