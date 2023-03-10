@@ -64,7 +64,7 @@ def register_segmentations(ibs, aid_list, config_url=None):
 @register_ibs_method
 def register_segmentations_depc(depc, aid_list, config=None):
     ibs = depc.controller
-    gpath_list, names, seg_masks = _compute_segmentations(ibs, aid_list, config)
+    gpath_list, names, seg_masks = _compute_segmentations(ibs, aid_list, config['config_path'])
     for aid, mask in zip(aid_list, seg_masks):
         yield (np.array(mask),)
 
