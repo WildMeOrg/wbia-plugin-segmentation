@@ -97,7 +97,7 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
     # Compute segmentation masks
     model.eval()
     gpath_list = []
-    names = []
+    names_list = []
     seg_mask_list = []
     os.makedirs(cfg.data.inference_mask_dir, exist_ok=True)
 
@@ -119,10 +119,10 @@ def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
                 overlayed_im.save(mask_fp)
 
                 gpath_list.append(mask_fp)
-                names.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
+                names_list.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
                 seg_mask_list.append(mask)
     
-    return gpath_list, names, seg_mask_list
+    return gpath_list, names_list, seg_mask_list
 
 
 def _load_config(config_name=None):
