@@ -41,9 +41,9 @@ class SegmentationConfig(dt.Config):  # NOQA
 
 
 @register_ibs_method
-def register_segmentations(ibs, aid_list, config_url=None):
+def register_segmentations(ibs, aid_list, config=None):
 
-    gpath_list, names, seg_masks = ibs._compute_segmentations(aid_list, config_url)
+    gpath_list, names, seg_masks = ibs._compute_segmentations(aid_list, config)
 
     seg_mask_gids = ibs.add_images(gpath_list, as_annots=True)
     metadata_dict_list = [{"mask_name": n} for n in gpath_list]
@@ -51,7 +51,13 @@ def register_segmentations(ibs, aid_list, config_url=None):
 
     return seg_mask_gids, names, seg_masks
 
-
+"""
+Schema:
+    'segmentationmask_rowid': 'integer primary key'
+    'annotations_rowid':  'integer not null'
+    'config_rowid': 'integer default 0'
+    'seg_mask': 'ndarray'
+"""
 @register_preproc_annot(
     tablename='SegmentationMask',
     parents=[ANNOTATION_TABLE],
@@ -70,15 +76,15 @@ def register_segmentations_depc(depc, aid_list, config=None):
 
 
 @register_ibs_method
-def _compute_segmentations(ibs, aid_list, config_url=None, multithread=False):
+def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     # Get species from the first annotation
     species = ibs.get_annot_species_texts(aid_list[0])
 
     # Load config
-    if config_url is None:
+    if config is None:
         cfg = _load_config()
     else:
-        cfg = _load_config(config_url)
+        cfg = _load_config(config)
 
     # Load model
     if species in MODELS:
