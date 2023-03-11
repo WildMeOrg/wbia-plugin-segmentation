@@ -162,7 +162,7 @@ def load_hf_model(model, compressed_model_path):
     unzip_path = compressed_model_path[:end_idx_path]
 
     zipped_model = zipfile.ZipFile(compressed_model_path)
-    unzip_folder_name = zipped_model.namelist().split("/")[0]
+    unzip_folder_name = zipped_model.namelist()[0].split("/")[0]
     zipped_model.extractall(unzip_path)
     zipped_model.close()
     
