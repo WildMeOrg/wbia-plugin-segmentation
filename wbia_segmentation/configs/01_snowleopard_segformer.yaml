@@ -16,7 +16,7 @@ data:
   source: 'snowleopard_v2'
   inference_dir: './inference'
   mask_suffix: '_mask.png'
-  inference_mask_dir: './mask_results'
+  inference_mask_dir: 'mask_results'
   training_percent: null
   num_workers: 2
   n_channels: 3

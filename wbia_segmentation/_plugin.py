@@ -107,7 +107,8 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     gpath_list = []
     names_list = []
     seg_mask_list = []
-    os.makedirs(cfg.data.inference_mask_dir, exist_ok=True)
+    masks_savedir = os.path.join(os.getenv('HOME_FOLDER'), cfg.data.inference_mask_dir)
+    os.makedirs(masks_savedir, exist_ok=True)
 
     with torch.no_grad():
         for images, names, image_sizes in tqdm(test_loader):
@@ -123,7 +124,7 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
 
                 overlayed_im = get_seg_overlay(im, mask)
                 image_uuid_name = names[i].split("/")[-1]
-                mask_fp = os.path.join(cfg.data.inference_mask_dir, image_uuid_name)+cfg.data.mask_suffix
+                mask_fp = os.path.join(masks_savedir, image_uuid_name)+cfg.data.mask_suffix
                 overlayed_im.save(mask_fp)
 
                 gpath_list.append(mask_fp)
