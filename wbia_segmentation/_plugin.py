@@ -108,6 +108,7 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     names_list = []
     seg_mask_list = []
     masks_savedir = os.path.join(os.getenv('HOME_FOLDER'), cfg.data.inference_mask_dir)
+    print(f"Saving masks to {masks_savedir}")
     os.makedirs(masks_savedir, exist_ok=True)
 
     with torch.no_grad():
