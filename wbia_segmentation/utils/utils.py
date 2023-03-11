@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+import shutil
+import os
 import yaml
 from yaml.loader import SafeLoader
 from argparse import Namespace
@@ -146,6 +148,27 @@ def load_checkpoint(fpath):
         print('Unable to load checkpoint from "{}"'.format(fpath))
         raise
     return checkpoint
+
+
+def load_hf_model(model, compressed_model_path):
+    r"""Loads HuggingFace pretrained weights to model.
+    Features::
+        - Model assumed to be a zip file. HF expects two files: 'config.json' and 'pytorch_model.bin'.
+    Args:
+        model (transformers.PreTrainedModel): HF network model object.
+        weight_path (str): path to zipped pretrained weights and config file.
+    """
+    end_idx_path = compressed_model_path.rindex("/")
+    unzip_path = compressed_model_path[:end_idx_path]
+
+    files_list_before = set(os.listdir(unzip_path))
+    shutil.unpack_archive(compressed_model_path, unzip_path)
+    files_list_after = set(os.listdir(unzip_path))
+
+    model_path = files_list_before.symmetric_difference(files_list_after)
+    model_path = list(model_path)[0]
+    
+    return model.model.from_pretrained(model_path)
 
 
 def load_pretrained_weights(model, weight_path):

@@ -13,7 +13,7 @@ from wbia import dtool as dt
 from wbia.control import controller_inject
 from wbia.constants import ANNOTATION_TABLE
 
-from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights, get_seg_overlay
+from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights, load_hf_model, get_seg_overlay
 from wbia_segmentation.default_config import get_default_config
 from wbia_segmentation.models import get_model
 from wbia_segmentation.data.dataset import InferenceSegDataset
@@ -30,9 +30,14 @@ register_preproc_annot = controller_inject.register_preprocs['annot']
 
 DEMOS = {}
 
-CONFIGS = {}
+CONFIGS = {
+    "snowleopard": "https://wildbookiarepository.azureedge.net/models/segmentation.snow_leopard.20230311.yaml"
+}
 
-MODELS = {}
+MODELS = {
+    "snowleopard": "https://wildbookiarepository.azureedge.net/models/segmentation.segformerb2.snow_leopard.model.20230311.zip"
+}
+
 
 class SegmentationConfig(dt.Config):  # NOQA
     _param_info_list = [
@@ -78,17 +83,18 @@ def register_segmentations_depc(depc, aid_list, config=None):
 @register_ibs_method
 def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     # Get species from the first annotation
-    species = ibs.get_annot_species_texts(aid_list[0])
+    #species = ibs.get_annot_species_texts(aid_list[0])
 
     # Load config
-    if config is None:
-        cfg = _load_config()
+    if config in CONFIGS:
+        config_url = CONFIGS[config]
+        cfg = _load_config(config_url)
     else:
-        cfg = _load_config(config)
+        cfg = _load_config()
 
     # Load model
-    if species in MODELS:
-        model_url = MODELS[species]
+    if config in MODELS:
+        model_url = MODELS[config]
     else:
         model_url = None
     model = _load_model(cfg, model_url)
@@ -127,21 +133,17 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     return gpath_list, names_list, seg_mask_list
 
 
-def _load_config(config_name=None):
+def _load_config(config_url=None):
     r"""
     Load a configuration file
     """
     args = get_default_config()
 
-    if config_name:
-        """
+    if config_url:
         config_fname = config_url.split('/')[-1]
         config_file = ut.grab_file_url(
             config_url, appname='wbia_segmentation', check_hash=True, fname=config_fname
         )
-        """
-        config_file = f"/wbia/wbia-plugin-segmentation/wbia_segmentation/configs/{config_name}"
-
         args = merge_from_file(args, config_file)
     
     return args
@@ -165,7 +167,7 @@ def _load_model(cfg, model_url=None):
         model_path = cfg.test.path_to_model
 
     if cfg.model.name == "hf":
-        model.model = model.model.from_pretrained(model_path)
+        model.model = load_hf_model(model, model_path)
     else:
         load_pretrained_weights(model, model_path)
 
