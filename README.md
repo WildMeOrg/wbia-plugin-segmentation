@@ -52,5 +52,6 @@ segmented_image_paths = ibs.get_annot_image_paths(segmented_gid_list)
 Another option is to use the cache and save the segmentation masks in sqlite segmentation cache table
 
 ```python
+aid_list = ibs.get_valid_aids()
 ibs.depc_annot.get('SegmentationMask', aid_list, 'seg_mask', {"config_path": '01_snowleopard_segformer.yaml'})
 ```

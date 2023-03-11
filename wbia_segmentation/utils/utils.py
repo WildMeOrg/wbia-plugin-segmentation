@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-import shutil
+import zipfile
 import os
 import yaml
 from yaml.loader import SafeLoader
@@ -161,14 +161,12 @@ def load_hf_model(model, compressed_model_path):
     end_idx_path = compressed_model_path.rindex("/")
     unzip_path = compressed_model_path[:end_idx_path]
 
-    files_list_before = set(os.listdir(unzip_path))
-    shutil.unpack_archive(compressed_model_path, unzip_path)
-    files_list_after = set(os.listdir(unzip_path))
-
-    model_path = files_list_before.symmetric_difference(files_list_after)
-    model_path = list(model_path)[0]
+    zipped_model = zipfile.ZipFile(compressed_model_path)
+    unzip_folder_name = zipped_model.namelist().split("/")[0]
+    zipped_model.extractall(unzip_path)
+    zipped_model.close()
     
-    return model.model.from_pretrained(model_path)
+    return model.model.from_pretrained(os.path.join(unzip_path, unzip_folder_name))
 
 
 def load_pretrained_weights(model, weight_path):
