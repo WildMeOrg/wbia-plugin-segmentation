@@ -89,6 +89,8 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     if config in CONFIGS:
         config_url = CONFIGS[config]
         cfg = _load_config(config_url)
+    elif ".yaml" in config:
+        cfg = _load_config(config)
     else:
         cfg = _load_config()
 
@@ -140,10 +142,13 @@ def _load_config(config_url=None):
     args = get_default_config()
 
     if config_url:
-        config_fname = config_url.split('/')[-1]
-        config_file = ut.grab_file_url(
-            config_url, appname='wbia_segmentation', check_hash=True, fname=config_fname
-        )
+        if ".yaml" in config_url:
+            config_file = config_url
+        else:
+            config_fname = config_url.split('/')[-1]
+            config_file = ut.grab_file_url(
+                config_url, appname='wbia_segmentation', check_hash=True, fname=config_fname
+            )
         args = merge_from_file(args, config_file)
     
     return args
