@@ -31,7 +31,7 @@ register_preproc_annot = controller_inject.register_preprocs['annot']
 DEMOS = {}
 
 CONFIGS = {
-    "snowleopard": "https://wildbookiarepository.azureedge.net/models/segmentation.snow_leopard.20230313.yaml"
+    "snowleopard": "https://wildbookiarepository.azureedge.net/models/segmentation.snow_leopard.20230311.yaml"
 }
 
 MODELS = {
