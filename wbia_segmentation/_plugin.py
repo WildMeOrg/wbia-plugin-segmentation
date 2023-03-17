@@ -224,6 +224,7 @@ def _load_model(cfg, model_url=None):
     model = get_model(cfg)
 
     # Download the model weights
+
     if model_url:
         model_fname = model_url.split('/')[-1]
         model_path = ut.grab_file_url(
@@ -233,7 +234,7 @@ def _load_model(cfg, model_url=None):
         model_path = cfg.test.path_to_model
 
     if cfg.model.name == "hf":
-        model.model = load_hf_model(model, model_path)
+        model.model = load_hf_model(model, model_path, model_url)
     else:
         load_pretrained_weights(model, model_path)
 

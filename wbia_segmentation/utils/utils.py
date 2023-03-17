@@ -161,7 +161,7 @@ def load_checkpoint(fpath):
     return checkpoint
 
 
-def load_hf_model(model, compressed_model_path):
+def load_hf_model(model, compressed_model_path, is_local=None):
     r"""Loads HuggingFace pretrained weights to model.
     Features::
         - Model assumed to be a zip file. HF expects two files: 'config.json' and 'pytorch_model.bin'.
@@ -169,6 +169,9 @@ def load_hf_model(model, compressed_model_path):
         model (transformers.PreTrainedModel): HF network model object.
         weight_path (str): path to zipped pretrained weights and config file.
     """
+    if is_local:
+        return model.model.from_pretrained(compressed_model_path)
+    
     end_idx_path = compressed_model_path.rindex("/")
     unzip_path = compressed_model_path[:end_idx_path]
 
