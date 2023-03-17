@@ -64,7 +64,6 @@ Schema:
     'config_rowid': 'integer default 0'
     'seg_mask': 'ndarray'
 """
-
 SegImgType = dt.ExternType(
     ut.partial(vt.imread, grayscale=True), vt.imwrite, extern_ext='.png'
 )
@@ -80,6 +79,19 @@ SegImgType = dt.ExternType(
 )
 @register_ibs_method
 def register_segmentations_depc(depc, aid_list, config=None):
+    r"""
+    Predict binary segmentation mask for a specified species (0 background, 1 foreground)
+    Args:
+        ibs (WBIAController):  wbia controller object
+        aid_list (int): annot ids specifying the input
+        config (SegmentationConfig): Config object specifying params file to run segmentation model
+    Returns:
+        list of 2D binary numpy arrays: list of binary segmentation masks
+    Example:
+        >>> # ENABLE_DOCTEST
+        >>> aid_list = ibs.get_valid_aids()
+        >>> seg_mask_list = ibs.depc_annot.get('SegmentationMask', aid_list, 'seg_mask', {"config_path": 'snowleopard'})
+    """
     ibs = depc.controller
     seg_masks = _compute_segmentations(ibs, aid_list, config['config_path'])
     for aid, mask in zip(aid_list, seg_masks):
@@ -88,6 +100,9 @@ def register_segmentations_depc(depc, aid_list, config=None):
 
 @register_ibs_method
 def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
+    r"""
+    Load config, data, model and predict segmentation masks
+    """
     # Get species from the first annotation
     #species = ibs.get_annot_species_texts(aid_list[0])
 
@@ -132,6 +147,11 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
 
 @register_ibs_method
 def _render_segmentations(ibs, aid_list, config=None, multithread=False):
+    r"""
+    Load config, data, model, predict segmentation masks and save
+    mask overlayed with original image for visualization purposes
+    into local home folder as calculated in `masks_savedir` variable below.
+    """
     # Get species from the first annotation
     #species = ibs.get_annot_species_texts(aid_list[0])
 
