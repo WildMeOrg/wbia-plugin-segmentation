@@ -119,7 +119,7 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
 
     with torch.no_grad():
         for images, names, image_sizes in tqdm(test_loader):
-            images = images.to(cfg.test.device)
+            images = images.to(cfg.device)
             output = model.predict(images.float())
             seg_masks = output.argmax(dim=1).detach().cpu()
             
@@ -174,7 +174,7 @@ def _render_segmentations(ibs, aid_list, config=None, multithread=False):
 
     with torch.no_grad():
         for images, names, image_sizes in tqdm(test_loader):
-            images = images.to(cfg.test.device)
+            images = images.to(cfg.device)
             output = model.predict(images.float())
             seg_masks = output.argmax(dim=1).detach().cpu()
             
@@ -217,7 +217,9 @@ def _load_model(cfg, model_url=None):
     Load a model based on config file
     """
     if cfg.test.use_cuda:
-        cfg.test.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        cfg.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else:
+        cfg.device = 'cpu'
     print('Building model: {}'.format(cfg.model.name))
     model = get_model(cfg)
 
@@ -235,7 +237,7 @@ def _load_model(cfg, model_url=None):
     else:
         load_pretrained_weights(model, model_path)
 
-    model = model.to(cfg.test.device)
+    model = model.to(cfg.device)
 
     return model
 

@@ -32,8 +32,8 @@ def evaluate(net, dataloader, args, loss):
     # iterate over the validation set
     for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
         image, mask_true, name = batch
-        image = image.to(device=args.train.device, dtype=torch.float32)
-        mask_true = mask_true.to(device=args.train.device, dtype=torch.long)
+        image = image.to(device=args.device, dtype=torch.float32)
+        mask_true = mask_true.to(device=args.device, dtype=torch.long)
 
         with torch.no_grad():
             softmax = torch.nn.Softmax(dim=1)
@@ -110,8 +110,8 @@ def train_net_coco(net, args):
                     if args.model.name == 'hf':
                         logits, masks = net(images, masks)
                     else:
-                        images = images.to(device=args.train.device, dtype=torch.float32)
-                        masks = masks.to(device=args.train.device, dtype=torch.long)
+                        images = images.to(device=args.device, dtype=torch.float32)
+                        masks = masks.to(device=args.device, dtype=torch.long)
                         logits = net(images)
                     loss = criterion(logits, masks) \
                             + dice_loss(sm(logits), masks)
@@ -180,7 +180,7 @@ def train_net_coco(net, args):
         net.model = net.model.from_pretrained(path_to_best_model)
     else:
         net.load_state_dict(torch.load(path_to_best_model))
-    net.to(args.train.device)
+    net.to(args.device)
     net.eval()
     display_results(net, val_set, args, wandb)
 
@@ -193,7 +193,7 @@ def test(args):
         net_best.model = net_best.model.from_pretrained(args.test.path_to_best)
     else:
         net_best.load_state_dict(torch.load(args.test.path_to_best))
-    net_best.to(args.train.device)
+    net_best.to(args.device)
     net_best.eval()
 
     dice_loss, _ = get_criterion(args)
@@ -224,7 +224,7 @@ def inference(args):
     '''
     net_best = get_model(args)
     net_best.load_state_dict(torch.load(args.test.path_to_best))
-    net_best.to(args.train.device)
+    net_best.to(args.device)
     net_best.eval()
     inference_loader = get_test_data_loader(args)
     num_val_batches = len(inference_loader)
@@ -232,7 +232,7 @@ def inference(args):
     # iterate over the validation set
     for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
         image, name, im_size = batch
-        image = image.to(device=args.train.device, dtype=torch.float32)
+        image = image.to(device=args.device, dtype=torch.float32)
 
         with torch.no_grad():
             logits = net_best(image)
@@ -252,12 +252,12 @@ def main(params):
     args.data.train_dir = f'{args.data.source}/train'
     args.data.val_dir = f'{args.data.source}/val'
     args.data.test_dir = f'{args.data.source}/test'
-    args.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(args.train.device)
+    args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(args.device)
 
     if args.management.processing_stage == 'Train':
         model = get_model(args)
-        model = model.to(args.train.device)
+        model = model.to(args.device)
         path_to_best = train_net_coco(model, args)
         print(f"Best model saved in {path_to_best}")
     elif args.management.processing_stage == 'Test':

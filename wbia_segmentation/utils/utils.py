@@ -63,7 +63,7 @@ def display_results(net, dset, args, wandb):
     net.eval()
 
     for images, masks, names in ds_loader:
-        images = images.to(args.train.device)
+        images = images.to(args.device)
 
         if args.model.name == 'hf':
             logits, _ = net(images, masks)

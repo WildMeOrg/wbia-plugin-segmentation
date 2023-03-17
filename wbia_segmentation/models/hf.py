@@ -6,7 +6,7 @@ class HfTransformer(nn.Module):
     def __init__(self, args) -> None:
         super().__init__()
 
-        self.device = args.train.device
+        self.device = args.device
         self.img_height, self.img_width = args.data.img_height, args.data.img_width
 
         self.model = AutoModelForSemanticSegmentation.from_pretrained(
