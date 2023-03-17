@@ -54,4 +54,5 @@ Another option is to use the cache and save the segmentation masks in sqlite seg
 ```python
 aid_list = ibs.get_valid_aids()
 ibs.depc_annot.get('SegmentationMask', aid_list, 'seg_mask', {"config_path": 'snowleopard'})
+ibs.depc_annot.delete_property('SegmentationMask', gid_list, {"config_path": 'snowleopard'})
 ```

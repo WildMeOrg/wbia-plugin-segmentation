@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from tqdm import tqdm
 import utool as ut
+import vtool as vt
 import logging
 import os
 
@@ -13,7 +14,7 @@ from wbia import dtool as dt
 from wbia.control import controller_inject
 from wbia.constants import ANNOTATION_TABLE
 
-from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights, load_hf_model, get_seg_overlay
+from wbia_segmentation.utils.utils import merge_from_file, load_pretrained_weights, load_hf_model, overlay_seg_mask, apply_seg_mask
 from wbia_segmentation.default_config import get_default_config
 from wbia_segmentation.models import get_model
 from wbia_segmentation.data.dataset import InferenceSegDataset
@@ -63,11 +64,16 @@ Schema:
     'config_rowid': 'integer default 0'
     'seg_mask': 'ndarray'
 """
+
+SegImgType = dt.ExternType(
+    ut.partial(vt.imread, grayscale=True), vt.imwrite, extern_ext='.png'
+)
+
 @register_preproc_annot(
     tablename='SegmentationMask',
     parents=[ANNOTATION_TABLE],
     colnames=['seg_mask'],
-    coltypes=[np.ndarray],
+    coltypes=[SegImgType],
     configclass=SegmentationConfig,
     fname='segmentation',
     chunksize=128,
@@ -113,7 +119,7 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
 
     with torch.no_grad():
         for images, names, image_sizes in tqdm(test_loader):
-            images = images.to(cfg.train.device)
+            images = images.to(cfg.test.device)
             output = model.predict(images.float())
             seg_masks = output.argmax(dim=1).detach().cpu()
             
@@ -123,7 +129,62 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
                 im = im.permute(1, 2, 0)
                 mask = seg_masks[0]
 
-                overlayed_im = get_seg_overlay(im, mask)
+                overlayed_im = apply_seg_mask(im, mask)
+                image_uuid_name = names[i].split("/")[-1]
+                mask_fp = os.path.join(masks_savedir, image_uuid_name)+cfg.data.mask_suffix
+                overlayed_im.save(mask_fp)
+
+                gpath_list.append(mask_fp)
+                names_list.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
+                seg_mask_list.append(mask.numpy())
+    
+    return gpath_list, names_list, seg_mask_list
+
+
+@register_ibs_method
+def _render_segmentations(ibs, aid_list, config=None, multithread=False):
+    # Get species from the first annotation
+    #species = ibs.get_annot_species_texts(aid_list[0])
+
+    # Load config
+    if config in CONFIGS:
+        config_url = CONFIGS[config]
+        cfg = _load_config(config_url)
+    else:
+        cfg = _load_config()
+
+    # Load model
+    if config in MODELS:
+        model_url = MODELS[config]
+    else:
+        model_url = None
+    model = _load_model(cfg, model_url)
+
+    # Create data loader with proper transformations
+    test_loader, _ = _load_data(ibs, aid_list, cfg, multithread)
+
+    # Compute segmentation masks
+    model.eval()
+    gpath_list = []
+    names_list = []
+    seg_mask_list = []
+    masks_savedir = os.path.join(os.getenv('HOME_FOLDER'), cfg.data.inference_mask_dir)
+    print(f"Saving masks to {masks_savedir}")
+    os.makedirs(masks_savedir, exist_ok=True)
+
+    with torch.no_grad():
+        for images, names, image_sizes in tqdm(test_loader):
+            images = images.to(cfg.test.device)
+            output = model.predict(images.float())
+            seg_masks = output.argmax(dim=1).detach().cpu()
+            
+            images = images.cpu()
+            for i in range(images.shape[0]):
+                im = images[0]
+                im = im.permute(1, 2, 0)
+                mask = seg_masks[0]
+
+                overlayed_im = overlay_seg_mask(im, mask)
                 image_uuid_name = names[i].split("/")[-1]
                 mask_fp = os.path.join(masks_savedir, image_uuid_name)+cfg.data.mask_suffix
                 overlayed_im.save(mask_fp)
@@ -155,7 +216,8 @@ def _load_model(cfg, model_url=None):
     r"""
     Load a model based on config file
     """
-    cfg.train.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if cfg.test.use_cuda:
+        cfg.test.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Building model: {}'.format(cfg.model.name))
     model = get_model(cfg)
 
@@ -173,7 +235,7 @@ def _load_model(cfg, model_url=None):
     else:
         load_pretrained_weights(model, model_path)
 
-    model = model.to(cfg.train.device)
+    model = model.to(cfg.test.device)
 
     return model
 

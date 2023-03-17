@@ -98,9 +98,20 @@ def display_results(net, dset, args, wandb):
     wandb.log({"Validation results" : table})
 
 
-def get_seg_overlay(image, seg):
+def overlay_seg_mask(image, seg):
     color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
     color_seg[seg == 1, :] = [216, 82, 24]
+
+    # Show image + mask
+    img = np.array(image) * 0.5 + color_seg * 0.5
+    img = img.astype(np.uint8)
+    img = Image.fromarray(img).convert('RGB')
+    return img
+
+
+def apply_seg_mask(image, seg):
+    color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
+    color_seg[seg == 0, :] = [0, 0, 0]
 
     # Show image + mask
     img = np.array(image) * 0.5 + color_seg * 0.5

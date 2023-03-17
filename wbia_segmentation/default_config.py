@@ -50,6 +50,7 @@ def get_default_config():
 
     # test
     cfg.test = Namespace()
+    cfg.test.use_cuda = False
     cfg.test.path_to_model = ''
     cfg.test.batch_size = 2
 
