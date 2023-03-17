@@ -110,11 +110,11 @@ def overlay_seg_mask(image, seg):
 
 
 def apply_seg_mask(image, seg):
-    color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
-    color_seg[seg == 0, :] = [0, 0, 0]
+    seg_with_channels = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8)
+    seg_with_channels[seg == 1, :] = [1, 1, 1]
 
-    # Show image + mask
-    img = np.array(image) * 0.5 + color_seg * 0.5
+    # Show image without background
+    img = np.array(image) * seg_with_channels
     img = img.astype(np.uint8)
     img = Image.fromarray(img).convert('RGB')
     return img

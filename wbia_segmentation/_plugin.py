@@ -81,7 +81,7 @@ SegImgType = dt.ExternType(
 @register_ibs_method
 def register_segmentations_depc(depc, aid_list, config=None):
     ibs = depc.controller
-    gpath_list, names, seg_masks = _compute_segmentations(ibs, aid_list, config['config_path'])
+    seg_masks = _compute_segmentations(ibs, aid_list, config['config_path'])
     for aid, mask in zip(aid_list, seg_masks):
         yield (np.array(mask),)
 
@@ -110,12 +110,7 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
 
     # Compute segmentation masks
     model.eval()
-    gpath_list = []
-    names_list = []
     seg_mask_list = []
-    masks_savedir = os.path.join(os.getenv('HOME_FOLDER'), cfg.data.inference_mask_dir)
-    print(f"Saving masks to {masks_savedir}")
-    os.makedirs(masks_savedir, exist_ok=True)
 
     with torch.no_grad():
         for images, names, image_sizes in tqdm(test_loader):
@@ -130,15 +125,9 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
                 mask = seg_masks[0]
 
                 overlayed_im = apply_seg_mask(im, mask)
-                image_uuid_name = names[i].split("/")[-1]
-                mask_fp = os.path.join(masks_savedir, image_uuid_name)+cfg.data.mask_suffix
-                overlayed_im.save(mask_fp)
-
-                gpath_list.append(mask_fp)
-                names_list.append(f"{image_uuid_name}{cfg.data.mask_suffix}")
                 seg_mask_list.append(mask.numpy())
     
-    return gpath_list, names_list, seg_mask_list
+    return seg_mask_list
 
 
 @register_ibs_method
