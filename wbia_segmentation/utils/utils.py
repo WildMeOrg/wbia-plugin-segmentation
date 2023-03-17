@@ -169,7 +169,7 @@ def load_hf_model(model, compressed_model_path, is_local=None):
         model (transformers.PreTrainedModel): HF network model object.
         weight_path (str): path to zipped pretrained weights and config file.
     """
-    if is_local:
+    if is_local is None:
         return model.model.from_pretrained(compressed_model_path)
     
     end_idx_path = compressed_model_path.rindex("/")
