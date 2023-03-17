@@ -92,14 +92,14 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     #species = ibs.get_annot_species_texts(aid_list[0])
 
     # Load config
-    if config in CONFIGS:
+    if config is not None and config in CONFIGS:
         config_url = CONFIGS[config]
         cfg = _load_config(config_url)
     else:
         cfg = _load_config()
 
     # Load model
-    if config in MODELS:
+    if config is not None and config in MODELS:
         model_url = MODELS[config]
     else:
         model_url = None
