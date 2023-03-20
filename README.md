@@ -41,18 +41,24 @@ Starting from a wbia running container:
 $ embed --segmentation
 ```
 
-3. Load aids from database and call `register_segmentations` method to generate segmentation masks for all DB images specified. A config file name can be specified. Otherwise the default config values will be loaded from plugin.
-
-```python
-aid_list = ibs.get_valid_aids()
-segmented_gid_list = ibs.register_segmentations(aid_list, config_url='snowleopard')
-segmented_image_paths = ibs.get_annot_image_paths(segmented_gid_list)
-```
-
-Another option is to use the cache and save the segmentation masks in sqlite segmentation cache table
+3. Load aids from database and get cached result (if segmentation masks have already been computed) else new segmentation masks are generated and saved into cache table.
 
 ```python
 aid_list = ibs.get_valid_aids()
 ibs.depc_annot.get('SegmentationMask', aid_list, 'seg_mask', {"config_path": 'snowleopard'})
 ibs.depc_annot.delete_property('SegmentationMask', gid_list, {"config_path": 'snowleopard'})
+```
+
+You can also call `register_segmentations` method to generate segmentation masks for all DB images specified without cache saving
+
+```python
+aid_list = ibs.get_valid_aids()
+seg_mask_list = ibs.register_segmentations(aid_list, config_url='snowleopard')
+```
+
+The method `_render_segmentations` can be used for visualization purposes since it will save the images with the mask overlayed on top of the images.
+
+```python
+aid_list = ibs.get_valid_aids()
+gpath_list, names_list, seg_mask_list = ibs._render_segmentations(aid_list, config_url='snowleopard')
 ```

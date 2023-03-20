@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import argparse
 import numpy as np
 from PIL import Image
 import zipfile
@@ -11,12 +11,16 @@ import os.path as osp
 import warnings
 from functools import partial
 from collections import OrderedDict
+from typing import Dict
+import wandb
 
 import evaluate
+import transformers
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+
 
 metric = evaluate.load("mean_iou")
 
@@ -26,7 +30,16 @@ class_labels = {
 }
 
 
-def mean_iou(preds, mask, id2label={0:'background', 1:'foreground'}):
+def mean_iou(preds: torch.Tensor, mask: torch.Tensor, id2label={0:'background', 1:'foreground'}) -> Dict:
+    r"""
+    Computes the mean IoU for a batch of predictions and masks.
+    Args:
+        preds (torch.Tensor): The predictions.
+        mask (torch.Tensor): The ground truth masks.
+        id2label (dict): A dictionary mapping class IDs to class names.
+    Returns:
+        The mean IoU.
+    """
     metrics = metric._compute(
                 predictions=preds,
                 references=mask,
@@ -44,17 +57,17 @@ def mean_iou(preds, mask, id2label={0:'background', 1:'foreground'}):
 
     return metrics
 
-def display_results(net, dset, args, wandb):
-    '''
-    Get for each of the first num_to_show validation images,
-    1. Form into batches
-    2. Use the data loader to load images, masks, alphas and names
-    3. Run through the net to produce logits
-    4. Use argmax with dim=1 to get categorical label predictions
-    5. Display the batch's images, manual segmentations (from the mask(),
-       predictions, and names.
-    '''
+def display_results(net: torch.nn.Module, dset: torch.utils.data.Dataset, args: argparse.Namespace, wandb: wandb) -> None:
+    r"""
+    Displays and saves the results of the model on the validation set to wandb.
+    Args:
+        net (torch.nn.Module): The model.
+        dset (torch.utils.data.Dataset): The validation set.
+        args (argparse.Namespace): The arguments.
+        wandb (wandb): The wandb object.
+    """
     
+    # Create a dataloader for the validation set and a wandb table to store the images
     batch_size = 5
     loader_args = dict(batch_size=batch_size, num_workers=2, pin_memory=True)
     ds_loader = DataLoader(dset, shuffle=False, drop_last=True, **loader_args)
@@ -62,6 +75,7 @@ def display_results(net, dset, args, wandb):
 
     net.eval()
 
+    # Iterate over the validation set and get segmentation masks for each image
     for images, masks, names in ds_loader:
         images = images.to(args.device)
 
@@ -75,12 +89,7 @@ def display_results(net, dset, args, wandb):
 
         preds = torch.max(preds, dim=1).indices
 
-        '''
-        At this point, probs, preds, masks should all be the same
-        shape, specifically (num_to_show, width, height)
-        And, each should be binary. For the decisions and masks, 1 indicates
-        foreground, 0 indicates background.
-        '''
+        # Iterate over the batch, transforming the images and masks into wandb images
 
         for i in range(preds.shape[0]):
             im = images[i, ...].detach().cpu().numpy()
@@ -95,10 +104,19 @@ def display_results(net, dset, args, wandb):
 
             table.add_data(names[i], mask_img)
     
+    # Log the table to wandb
     wandb.log({"Validation results" : table})
 
 
-def overlay_seg_mask(image, seg):
+def overlay_seg_mask(image: torch.Tensor , seg: torch.Tensor) -> Image:
+    r"""
+    Overlays the segmentation mask on the image.
+    Args:
+        image (torch.Tensor): The image.
+        seg (torch.Tensor): The segmentation mask.
+    Returns:
+        The image with the segmentation mask overlaid as a PIL image.
+    """
     color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8) # height, width, 3
     color_seg[seg == 1, :] = [216, 82, 24]
 
@@ -109,7 +127,15 @@ def overlay_seg_mask(image, seg):
     return img
 
 
-def apply_seg_mask(image, seg):
+def apply_seg_mask(image: torch.Tensor, seg: torch.Tensor) -> Image:
+    r"""
+    Applies the segmentation mask to the image. Background pixels are set to 0.
+    Args:
+        image (torch.Tensor): The image.
+        seg (torch.Tensor): The segmentation mask.
+    Returns:
+        The image with the segmentation mask applied as a PIL image.
+    """
     seg_with_channels = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8)
     seg_with_channels[seg == 1, :] = [1, 1, 1]
 
@@ -120,7 +146,15 @@ def apply_seg_mask(image, seg):
     return img
 
 
-def merge_from_file(args, cfg_path):
+def merge_from_file(args: argparse.Namespace, cfg_path: str) -> argparse.Namespace:
+    r"""
+    Merges config from yaml file into args. Overwrites default args with config file values.
+    Args:
+        args (argparse.Namespace): The arguments.
+        cfg_path (str): The path to the config file.
+    Returns:
+        argparse.Namespace: The merged arguments.
+    """
     with open(cfg_path) as f:
         cfg = yaml.load(f, Loader=SafeLoader)
     
@@ -135,8 +169,9 @@ def merge_from_file(args, cfg_path):
     return Namespace(**args)
 
 
-def load_checkpoint(fpath):
-    r"""Loads checkpoint.
+def load_checkpoint(fpath: str):
+    r"""
+    Loads checkpoint.
     ``UnicodeDecodeError`` can be well handled, which means
     python2-saved files can be read from python3.
     Args:
@@ -161,17 +196,23 @@ def load_checkpoint(fpath):
     return checkpoint
 
 
-def load_hf_model(model, compressed_model_path, is_local=None):
-    r"""Loads HuggingFace pretrained weights to model.
+def load_hf_model(model: transformers.PreTrainedModel, compressed_model_path: str, is_local: bool=False) -> transformers.PreTrainedModel:
+    r"""
+    Loads HuggingFace pretrained weights to model.
     Features::
         - Model assumed to be a zip file. HF expects two files: 'config.json' and 'pytorch_model.bin'.
     Args:
         model (transformers.PreTrainedModel): HF network model object.
         weight_path (str): path to zipped pretrained weights and config file.
+        is_local (bool): whether the model is local or not.
+    Returns:
+        transformers.PreTrainedModel: HF network model object.
     """
-    if is_local is None:
+    # If model is local, load it directly (assumes model is not zipped)
+    if is_local:
         return model.model.from_pretrained(compressed_model_path)
     
+    # If model is not local, unzip it and load it
     end_idx_path = compressed_model_path.rindex("/")
     unzip_path = compressed_model_path[:end_idx_path]
 
@@ -183,7 +224,7 @@ def load_hf_model(model, compressed_model_path, is_local=None):
     return model.model.from_pretrained(os.path.join(unzip_path, unzip_folder_name))
 
 
-def load_pretrained_weights(model, weight_path):
+def load_pretrained_weights(model: nn.Module, weight_path: str) -> None:
     r"""Loads pretrained weights to model.
     Features::
         - Incompatible layers (unmatched in name or size) will be ignored.

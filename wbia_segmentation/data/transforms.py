@@ -1,9 +1,13 @@
+import argpase
+from typing import Tuple, List, Optional
+
+import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 from torchvision.transforms import InterpolationMode
 
 
-def calc_padding(h, w):
+def calc_padding(h: int, w: int) -> Tuple:
     '''
     Calculate the padding needed to make the image square (and centered).
     Padding is only added to smaller dimension and it is equal on top/bottom, 
@@ -30,7 +34,7 @@ class SquarePad:
     If the image is square already nothing is done to it.
     NOT TESTED!
     '''
-    def __call__(self, im):
+    def __call__(self, im: torch.Tensor):
         s = im.size()
         h, w = s[-2], s[-1]
         if h == w:
@@ -39,7 +43,7 @@ class SquarePad:
         return F.pad(im, padding, 0, 'constant')
 
 
-def size_and_crop_to_original(bin_im, orig_height, orig_width):
+def size_and_crop_to_original(bin_im: torch.Tensor, orig_height: int, orig_width: int):
     '''
     Return the binary image segmentation mask to the original
     image dimension by resizing and cropping.
@@ -52,19 +56,10 @@ def size_and_crop_to_original(bin_im, orig_height, orig_width):
     return bin_im
 
 
-def build_train_val_transforms(args):
+def build_train_val_transforms(args: argpase.Namespace) -> Tuple[T.Compose, T.Compose]:
     """Build train and test transformation functions.
     Args:
-        height (int): target image height.
-        width (int): target image width.
-        transforms_train (str or list of str, optional): transformations
-            applied to training data. Default is 'random_flip'.
-        transforms_test (str or list of str, optional): transformations
-            applied to test data. Default is 'resize'.
-        norm_mean (list or None, optional): normalization mean values.
-            Default is ImageNet means.
-        norm_std (list or None, optional): normalization standard deviation
-            values. Default is ImageNet standard deviation values.
+        args: command line arguments
     Returns:
         transform_tr: transformation function for training
         transform_te: transformation function for testing
@@ -80,13 +75,13 @@ def build_train_val_transforms(args):
 
 
 def build_transforms(
-    img_height,
-    img_width,
-    transforms='center_crop',
-    norm_mean=None,
-    norm_std=None,
+    img_height: int,
+    img_width: int,
+    transforms: str = 'center_crop',
+    norm_mean: Optional[List[float]] = None,
+    norm_std: Optional[List[float]] = None,
     **kwargs
-):
+) -> T.Compose:
     """Build transformation functions.
     Args:
         height (int): target image height.

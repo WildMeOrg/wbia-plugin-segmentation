@@ -267,7 +267,8 @@ def _load_model(cfg, model_url=None):
         model_path = cfg.test.path_to_model
 
     if cfg.model.name == "hf":
-        model.model = load_hf_model(model, model_path, model_url)
+        is_local = model_url is None
+        model.model = load_hf_model(model, model_path, is_local)
     else:
         load_pretrained_weights(model, model_path)
 

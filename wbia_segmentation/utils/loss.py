@@ -3,7 +3,7 @@ import torch
 
 
 # dice loss without alpha
-def dice_loss(preds: Tensor, mask: Tensor, epsilon=1e-6):
+def dice_loss(preds: Tensor, mask: Tensor, epsilon=1e-6) -> float:
     """
     Compute the dice_loss across all classes (0 / 1 for foreground/background)
     preds should be nbatch, nclass, width, height of float

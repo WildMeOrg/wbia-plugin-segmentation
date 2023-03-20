@@ -1,3 +1,4 @@
+import torchvision.transforms as T
 from torchvision.io import read_image
 from torch.utils.data import Dataset
 import torch
@@ -6,23 +7,22 @@ import os
 from os import listdir
 from os.path import join
 from pathlib import Path
+from typing import List
 import logging
-
 import random
+import argparse
 
-def select_random_elements(lst, num_elements, seed=None):
+def select_random_elements(index_list: List, num_elements: int, seed: int=None) -> List:
     """
     Selects a specified number of elements from a list at random while maintaining their original order.
-    
     Args:
-    lst: A list of elements
-    num_elements: An integer specifying the number of elements to select
-    seed: An optional integer seed value for reproducibility
-    
+        lst: A list of dataset indices
+        num_elements: An integer specifying the number of elements to select
+        seed: An optional integer seed value for reproducibility
     Returns:
-    A list of randomly selected elements from the input list in their original order
+        A list of randomly selected indices from the input list in their original order
     """
-    if num_elements > len(lst):
+    if num_elements > len(index_list):
         raise ValueError("num_elements must be less than or equal to the length of the input list")
     
     # Set the random seed if provided
@@ -30,7 +30,7 @@ def select_random_elements(lst, num_elements, seed=None):
         random.seed(seed)
     
     # Make a copy of the list and shuffle its indices
-    indices = list(range(len(lst)))
+    indices = list(range(len(index_list)))
     random.shuffle(indices)
     
     # Select the specified number of indices and sort them
@@ -42,10 +42,10 @@ def select_random_elements(lst, num_elements, seed=None):
 
 class SegDataset(Dataset):
     def __init__(self,
-                 images_dir,
-                 args,
-                 transform = None,
-                 mask_suffix = '_mask.png'):
+                 images_dir: str,
+                 args:  argparse.Namespace,
+                 transform: T.Compose = None,
+                 mask_suffix: str = '_mask.png'):
         '''
         Record the names, the image file names and the mask filenames (derived
         from the image file names).  This allows the original images (chips, actually)
@@ -54,6 +54,11 @@ class SegDataset(Dataset):
         allows there to be images with the name 'blend' in them.  These are ignored.
         Finally, there is a one-to-one correspondence between image file and mask image
         files.
+        Args:
+            images_dir: directory containing the images and masks
+            args: command line arguments
+            transform: Torchvision transformation function
+            mask_suffix: suffix of the mask images
         '''
         self.training_percent = args.data.training_percent
         self.model_name = args.model.name
@@ -73,6 +78,7 @@ class SegDataset(Dataset):
         self.mask_fns = [fn for fn in file_names if fn.lower().endswith(mask_suffix)]
         self.mask_fns.sort()
 
+        # Subsample the training data if requested (for experimentation purposes only)
         if "train" in images_dir and self.training_percent:
             sample_size = int(len(self.image_fns)*self.training_percent)
             selected_idxs = select_random_elements(self.image_fns, sample_size, seed=42)
@@ -91,22 +97,15 @@ class SegDataset(Dataset):
         return len(self.names)
 
     def __getitem__(self, idx):
-        '''
-        FIX ME.  THese comments are out of date.
-
-        For the given idx, return the image, the mask, the alpha mask and the
-        image name. The mask and the alpha mask require an explanation. The values
-        in the mask are the reflection of the values in the input mask image:
-        0 -> 2, 1->1 and 2->0. In other words, the regions outside the annotation
-        now have value 2 and the foreground now has value 0. This makes computing
-        the loss values easier. The alpha mask is a binary version of the original
-        mask mapping 1 and 2 to 1, so that pixels that we must ignore are 0 and
-        pixels to pay attention to are 1.
+        r"""
+        For the given idx, return the image, the mask and the image name.
+        The mask contains values 0, 1, 2. 0 is don't care, 1 is background, 2 is foreground.
+        Values 1 are changed to 0 (background as well). Foreground is mapped to 1.
+        The end result is: 0 -> background, 1 -> foreground.
 
         For images from the training set, random rotations and crops are applied.
         For images from other sets, only centered cropping is applied.
-
-        '''
+        """
         im_fn = join(self.images_dir, self.image_fns[idx])
 
         if self.model_name == "hf":
