@@ -13,7 +13,6 @@ def calc_padding(h: int, w: int) -> Tuple:
     Padding is only added to smaller dimension and it is equal on top/bottom, 
     left/right if the image dimensions are even and shifted up/left by one
     otherwise.
-    NOT TESTED!
     '''
     if w < h:
         p = w - h
@@ -47,7 +46,6 @@ def size_and_crop_to_original(bin_im: torch.Tensor, orig_height: int, orig_width
     '''
     Return the binary image segmentation mask to the original
     image dimension by resizing and cropping.
-    NOT TESTED!
     '''
     max_hw = max(orig_height, orig_width)
     left, top, _, _ = calc_padding(orig_height, orig_width)

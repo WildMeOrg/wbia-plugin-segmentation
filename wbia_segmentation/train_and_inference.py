@@ -222,9 +222,9 @@ def apply_segmentation(args, names, images, labels, sizes):
     assert num_images == labels.shape[0]
     os.makedirs(args.data.inference_mask_dir, exist_ok=True)
 
-    for name, image, label, size in zip(names, images, labels, sizes):
-        bin_im = size_and_crop_to_original(label, size[0], size[1])
+    for name, image, bin_im, size in zip(names, images, labels, sizes):
         fp = os.path.join(args.data.inference_mask_dir, name, args.data.mask_suffix)
+        image = image.permute(1, 2, 0)
         overlayed_im = apply_seg_mask(image, bin_im)
         overlayed_im.save(fp)
 
@@ -250,13 +250,14 @@ def inference(args):
 
         with torch.no_grad():
             if args.model.name == 'hf':
-                pred_labels = net_best.predict(image)
-                pred_labels = pred_labels.detach().cpu().numpy()
+                output = net_best.predict(image)
+                pred_labels = output.argmax(dim=1).detach().cpu()
             else:
                 logits = net_best(image)
                 softmax = torch.nn.Softmax(dim=1)
                 preds = softmax(logits)
-                pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
+                pred_labels = preds.argmax(dim=1).detach().cpu()
+            image = image.cpu()
             apply_segmentation(args, name, image, pred_labels, im_size)
 
 
