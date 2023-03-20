@@ -250,12 +250,13 @@ def inference(args):
 
         with torch.no_grad():
             if args.model.name == 'hf':
-                logits, _ = net_best.predict(image)
+                pred_labels = net_best.predict(image)
+                pred_labels = pred_labels.detach().cpu().numpy()
             else:
                 logits = net_best(image)
-            softmax = torch.nn.Softmax(dim=1)
-            preds = softmax(logits)
-            pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
+                softmax = torch.nn.Softmax(dim=1)
+                preds = softmax(logits)
+                pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
             apply_segmentation(args, name, image, pred_labels, im_size)
 
 
