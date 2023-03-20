@@ -17,7 +17,7 @@ from utils.optimization import (
     get_optimizer,
     get_scheduler
 )
-from data.helpers import get_data_loaders, get_test_data_loader
+from data.helpers import get_data_loaders, get_test_data_loader, get_inference_data_loader
 from utils.utils import display_results, mean_iou, merge_from_file, apply_seg_mask
 from data.transforms import size_and_crop_to_original
 from default_config import get_default_config
@@ -240,7 +240,7 @@ def inference(args):
         net_best.load_state_dict(torch.load(args.test.path_to_model))
     net_best.to(args.device)
     net_best.eval()
-    inference_loader = get_test_data_loader(args)
+    inference_loader = get_inference_data_loader(args)
     num_val_batches = len(inference_loader)
 
     # iterate over the validation set

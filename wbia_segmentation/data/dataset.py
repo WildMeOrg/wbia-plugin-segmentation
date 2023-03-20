@@ -131,10 +131,15 @@ class SegDataset(Dataset):
 
 
 class InferenceSegDataset(Dataset):
-    def __init__(self, image_fns, cfg, transform=None):
+    def __init__(self, image_fns_or_path, cfg, transform=None):
         self.model_name = cfg.model.name
         self.transform = transform
-        self.image_fns = image_fns
+
+        if isinstance(image_fns_or_path, str):
+            image_fns = listdir(image_fns_or_path)
+            image_fns = [join(image_fns_or_path, fn) for fn in image_fns]
+        else:
+            self.image_fns = image_fns
         self.image_fns.sort()
         self.names = [os.path.splitext(im_fn)[0] for im_fn in self.image_fns]
         if not self.image_fns or len(self.image_fns) == 0:

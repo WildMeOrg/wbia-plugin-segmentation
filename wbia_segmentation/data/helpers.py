@@ -2,7 +2,7 @@ import argparse
 from typing import Tuple
 
 from data.transforms import build_train_val_transforms
-from data.dataset import SegDataset
+from data.dataset import SegDataset, InferenceSegDataset
 
 from torch.utils.data import DataLoader
 
@@ -41,6 +41,24 @@ def get_test_data_loader(args: argparse.Namespace) -> DataLoader:
     _, test_transforms = build_train_val_transforms(args)
 
     test_set = SegDataset(args.test.data_dir, args, test_transforms)
+
+    # 2. Create data loaders
+    loader_args = dict(batch_size=args.train.batch_size, num_workers=args.data.num_workers, pin_memory=True)
+    test_loader = DataLoader(test_set, shuffle=False, drop_last=True, **loader_args)
+
+    return test_loader
+
+def get_inference_data_loader(args: argparse.Namespace) -> DataLoader:
+    r"""
+    Get data loader for testing.
+    Args:
+        args: command line arguments
+    Returns:
+        test_loader: test data loader
+    """
+    _, test_transforms = build_train_val_transforms(args)
+
+    test_set = InferenceSegDataset(args.test.data_dir, args, test_transforms)
 
     # 2. Create data loaders
     loader_args = dict(batch_size=args.train.batch_size, num_workers=args.data.num_workers, pin_memory=True)
