@@ -219,7 +219,7 @@ def segmentation_output(args, names, labels, sizes):
 
 def apply_segmentation(args, names, images, labels, sizes):
     num_images = len(names)
-    assert num_images == labels.size()[0]
+    assert num_images == labels.shape[0]
     os.makedirs(args.data.inference_mask_dir, exist_ok=True)
 
     for name, image, label, size in zip(names, images, labels, sizes):
