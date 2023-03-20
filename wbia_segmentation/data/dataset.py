@@ -137,7 +137,7 @@ class InferenceSegDataset(Dataset):
 
         if isinstance(image_fns_or_path, str):
             image_fns = listdir(image_fns_or_path)
-            image_fns = [join(image_fns_or_path, fn) for fn in image_fns]
+            self.image_fns = [join(image_fns_or_path, fn) for fn in image_fns]
         else:
             self.image_fns = image_fns
         self.image_fns.sort()
