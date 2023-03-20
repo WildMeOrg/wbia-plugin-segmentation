@@ -39,5 +39,6 @@ train:
 
 test:
   use_cuda: True
+  data_dir: ''
   path_to_model: ''
   batch_size: 2

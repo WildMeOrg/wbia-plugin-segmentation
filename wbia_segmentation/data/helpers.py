@@ -40,7 +40,7 @@ def get_test_data_loader(args: argparse.Namespace) -> DataLoader:
     """
     _, test_transforms = build_train_val_transforms(args)
 
-    test_set = SegDataset(args.data.test_dir, args, test_transforms)
+    test_set = SegDataset(args.test.data_dir, args, test_transforms)
 
     # 2. Create data loaders
     loader_args = dict(batch_size=args.train.batch_size, num_workers=args.data.num_workers, pin_memory=True)
