@@ -1,4 +1,4 @@
-import argpase
+import argparse
 from typing import Tuple, List, Optional
 
 import torch
@@ -56,7 +56,7 @@ def size_and_crop_to_original(bin_im: torch.Tensor, orig_height: int, orig_width
     return bin_im
 
 
-def build_train_val_transforms(args: argpase.Namespace) -> Tuple[T.Compose, T.Compose]:
+def build_train_val_transforms(args: argparse.Namespace) -> Tuple[T.Compose, T.Compose]:
     """Build train and test transformation functions.
     Args:
         args: command line arguments
