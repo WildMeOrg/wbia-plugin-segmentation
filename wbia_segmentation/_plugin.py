@@ -48,14 +48,22 @@ class SegmentationConfig(dt.Config):  # NOQA
 
 @register_ibs_method
 def register_segmentations(ibs, aid_list, config=None):
+    r"""
+    Predict binary segmentation mask for a specified species (0 background, 1 foreground)
+    Args:
+        ibs (WBIAController):  wbia controller object
+        aid_list (int): annot ids specifying the input
+        config (SegmentationConfig): Config object specifying params file to run segmentation model
+    Returns:
+        list of 2D binary numpy arrays: list of binary segmentation masks
+    Example:
+        >>> # ENABLE_DOCTEST
+        >>> aid_list = ibs.get_valid_aids()
+        >>> seg_mask_list = ibs.register_segmentations(aid_list, "snowleopard")
+    """
+    seg_mask_list = ibs._compute_segmentations(aid_list, config)
 
-    gpath_list, names, seg_masks = ibs._compute_segmentations(aid_list, config)
-
-    seg_mask_gids = ibs.add_images(gpath_list, as_annots=True)
-    metadata_dict_list = [{"mask_name": n} for n in gpath_list]
-    ibs.set_annot_metadata(aid_list, metadata_dict_list)
-
-    return seg_mask_gids, names, seg_masks
+    return seg_mask_list
 
 """
 Schema:
@@ -102,6 +110,12 @@ def register_segmentations_depc(depc, aid_list, config=None):
 def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
     r"""
     Load config, data, model and predict segmentation masks
+    Args:
+        ibs (WBIAController):  wbia controller object
+        aid_list (int): annot ids specifying the input
+        config (str): URL to config file
+    Returns:
+        list of 2D binary numpy arrays: list of binary segmentation masks
     """
     # Get species from the first annotation
     #species = ibs.get_annot_species_texts(aid_list[0])
@@ -138,7 +152,8 @@ def _compute_segmentations(ibs, aid_list, config=None, multithread=False):
                 im = images[0]
                 im = im.permute(1, 2, 0)
                 mask = seg_masks[0]
-
+                
+                # Apply mask to image (background is assigned value 0)
                 overlayed_im = apply_seg_mask(im, mask)
                 seg_mask_list.append(mask.numpy())
     
@@ -151,6 +166,14 @@ def _render_segmentations(ibs, aid_list, config=None, multithread=False):
     Load config, data, model, predict segmentation masks and save
     mask overlayed with original image for visualization purposes
     into local home folder as calculated in `masks_savedir` variable below.
+    Args:
+        ibs (WBIAController):  wbia controller object
+        aid_list (int): annot ids specifying the input
+        config (str): URL to config file
+    Returns:
+        gpath_list (list): list of paths to saved images
+        names_list (list): list of names of saved images
+        seg_mask_list (list): list of binary segmentation masks as numpy arrays
     """
     # Get species from the first annotation
     #species = ibs.get_annot_species_texts(aid_list[0])
@@ -193,6 +216,7 @@ def _render_segmentations(ibs, aid_list, config=None, multithread=False):
                 im = im.permute(1, 2, 0)
                 mask = seg_masks[0]
 
+                # Apply mask to image (mask is overlayed keeping original image)
                 overlayed_im = overlay_seg_mask(im, mask)
                 image_uuid_name = names[i].split("/")[-1]
                 mask_fp = os.path.join(masks_savedir, image_uuid_name)+cfg.data.mask_suffix
