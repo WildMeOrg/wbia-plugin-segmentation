@@ -18,7 +18,7 @@ from utils.optimization import (
     get_scheduler
 )
 from data.helpers import get_data_loaders, get_test_data_loader
-from utils.utils import display_results, mean_iou, merge_from_file
+from utils.utils import display_results, mean_iou, merge_from_file, apply_seg_mask
 from data.transforms import size_and_crop_to_original
 from default_config import get_default_config
 
@@ -190,9 +190,9 @@ def train_net_coco(net, args):
 def test(args):
     net_best = get_model(args)
     if args.model.name == 'hf':
-        net_best.model = net_best.model.from_pretrained(args.test.path_to_best)
+        net_best.model = net_best.model.from_pretrained(args.test.path_to_model)
     else:
-        net_best.load_state_dict(torch.load(args.test.path_to_best))
+        net_best.load_state_dict(torch.load(args.test.path_to_model))
     net_best.to(args.device)
     net_best.eval()
 
@@ -217,13 +217,27 @@ def segmentation_output(args, names, labels, sizes):
         save_image(bin_im, fp)
 
 
+def apply_segmentation(args, names, images, labels, sizes):
+    num_images = len(names)
+    assert num_images == labels.size()[0]
+    os.makedirs(args.data.inference_mask_dir, exist_ok=True)
+
+    for name, image, label, size in zip(names, images, labels, sizes):
+        bin_im = size_and_crop_to_original(label, size[0], size[1])
+        fp = os.path.join(args.data.inference_mask_dir, name, args.data.mask_suffix)
+        overlayed_im = apply_seg_mask(image, bin_im)
+        overlayed_im.save(fp)
+
+
 def inference(args):
     '''
     Apply inference to a folder of images.
-    NOT TESTED
     '''
     net_best = get_model(args)
-    net_best.load_state_dict(torch.load(args.test.path_to_best))
+    if args.model.name == 'hf':
+        net_best.model = net_best.model.from_pretrained(args.test.path_to_model)
+    else:
+        net_best.load_state_dict(torch.load(args.test.path_to_model))
     net_best.to(args.device)
     net_best.eval()
     inference_loader = get_test_data_loader(args)
@@ -239,7 +253,7 @@ def inference(args):
             softmax = torch.nn.Softmax(dim=1)
             preds = softmax(logits)
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
-            segmentation_output(args, name, pred_labels, im_size)
+            apply_segmentation(args, name, image, pred_labels, im_size)
 
 
 
