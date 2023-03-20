@@ -249,7 +249,10 @@ def inference(args):
         image = image.to(device=args.device, dtype=torch.float32)
 
         with torch.no_grad():
-            logits = net_best(image)
+            if args.model.name == 'hf':
+                logits, _ = net_best.predict(image)
+            else:
+                logits = net_best(image)
             softmax = torch.nn.Softmax(dim=1)
             preds = softmax(logits)
             pred_labels = preds.argmax(dim=1).detach().cpu().numpy()
