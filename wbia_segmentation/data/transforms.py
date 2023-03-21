@@ -31,7 +31,6 @@ class SquarePad:
     '''
     Transform to make an input image (train, val, test) square
     If the image is square already nothing is done to it.
-    NOT TESTED!
     '''
     def __call__(self, im: torch.Tensor):
         s = im.size()
@@ -171,7 +170,7 @@ def build_transforms(
             transform_list += [T.RandomRotation(30)]
 
         elif tfm == "resize":
-            transform_list += [T.Resize(max(img_height, img_width))]
+            transform_list += [T.Resize((img_height, img_width))]
 
         elif tfm == "normalize":
             continue
