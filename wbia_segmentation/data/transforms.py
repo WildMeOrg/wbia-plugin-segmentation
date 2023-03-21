@@ -26,19 +26,29 @@ def calc_padding(h: int, w: int) -> Tuple:
         padding = (0, top, 0, bottom)
     return padding
 
-  
 class SquarePad:
     '''
     Transform to make an input image (train, val, test) square
     If the image is square already nothing is done to it.
     '''
-    def __call__(self, im: torch.Tensor):
-        s = im.size()
-        h, w = s[-2], s[-1]
+    def __call__(self, img):
+        w, h = img.size()[-2:]
+
         if h == w:
-            return im
-        padding = calc_padding(h, w)
-        return F.pad(im, padding, 0, 'constant')
+            return img
+        
+        # calculate padding needed
+        if w > h:
+            padding = (w - h) // 2
+            pad_dims = (padding, 0, padding + (w-h)%2, 0)
+        else:
+            padding = (h - w) // 2
+            pad_dims = (0, padding, 0, padding + (h-w)%2)
+
+        # apply padding
+        img = F.pad(img, pad_dims)
+
+        return img
 
 
 def size_and_crop_to_original(bin_im: torch.Tensor, orig_height: int, orig_width: int):

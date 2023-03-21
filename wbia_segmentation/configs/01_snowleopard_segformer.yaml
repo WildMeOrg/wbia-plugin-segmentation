@@ -24,7 +24,7 @@ data:
   img_width: 400
   transforms_train: ["random_rotation", "random_crop"]
   transforms_test: 'center_crop'
-  transforms_inference: 'center_crop'
+  transforms_inference: 'resize'
   norm_mean: null
   norm_std: null
 
