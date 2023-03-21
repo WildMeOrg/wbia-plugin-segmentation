@@ -1,7 +1,7 @@
 import argparse
 from typing import Tuple
 
-from data.transforms import build_train_val_transforms
+from data.transforms import build_train_val_transforms, build_inference_transforms
 from data.dataset import SegDataset, InferenceSegDataset
 
 from torch.utils.data import DataLoader
@@ -56,9 +56,9 @@ def get_inference_data_loader(args: argparse.Namespace) -> DataLoader:
     Returns:
         test_loader: test data loader
     """
-    _, test_transforms = build_train_val_transforms(args)
+    inference_transforms = build_inference_transforms(args)
 
-    test_set = InferenceSegDataset(args.test.data_dir, args, test_transforms)
+    test_set = InferenceSegDataset(args.test.data_dir, args, inference_transforms)
 
     # 2. Create data loaders
     loader_args = dict(batch_size=args.train.batch_size, num_workers=args.data.num_workers, pin_memory=True)

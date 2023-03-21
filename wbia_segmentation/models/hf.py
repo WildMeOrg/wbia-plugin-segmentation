@@ -51,6 +51,5 @@ class HfTransformer(nn.Module):
             align_corners=False,
         )
         mask_probs = self.sm(logits)
-        pred_mask = mask_probs.argmax(dim=1)
         
         return mask_probs

@@ -155,7 +155,7 @@ class InferenceSegDataset(Dataset):
         else:
             im = read_image(self.image_fns[idx]) / 255
 
-        if self.transform is not None:  # MAKE SURE THIS HAS PROPER RESIZE
+        if self.transform is not None:
             im = self.transform(im)
       
         return im, self.names[idx], (im.size()[-2], im.size()[-1])

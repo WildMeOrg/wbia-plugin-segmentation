@@ -72,6 +72,19 @@ def build_train_val_transforms(args: argparse.Namespace) -> Tuple[T.Compose, T.C
     return transform_tr, transform_te
 
 
+def build_inference_transforms(args: argparse.Namespace) -> T.Compose:
+    """Build inference transformation functions.
+    Args:
+        args: command line arguments
+    Returns:
+        transform_tr: transformation function for inference
+    """
+    transform_inf = build_transforms(
+        img_height=args.data.img_height, img_width=args.data.img_width, transforms=args.data.transforms_inference, norm_mean=args.data.norm_mean, norm_std=args.data.norm_std
+    )
+    return transform_inf
+
+
 def build_transforms(
     img_height: int,
     img_width: int,

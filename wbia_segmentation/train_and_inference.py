@@ -242,7 +242,7 @@ def inference(args):
     net_best.eval()
     inference_loader = get_inference_data_loader(args)
     num_val_batches = len(inference_loader)
-
+    
     # iterate over the validation set
     for batch in tqdm(inference_loader, total=num_val_batches, desc='Inference time', unit='batch', leave=False):
         image, name, im_size = batch
