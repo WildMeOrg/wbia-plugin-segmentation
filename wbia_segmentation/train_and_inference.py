@@ -213,7 +213,7 @@ def segmentation_output(args, names, labels, sizes):
 
     for name, label, size in zip(names, labels, sizes):
         bin_im = size_and_crop_to_original(label, size[0], size[1])
-        fp = os.path.join(args.data.inference_mask_dir, name, args.data.mask_suffix)
+        fp = os.path.join(args.data.inference_mask_dir, f"{name}{args.data.mask_suffix}")
         save_image(bin_im, fp)
 
 
@@ -223,7 +223,7 @@ def apply_segmentation(args, names, images, labels, sizes):
     os.makedirs(args.data.inference_mask_dir, exist_ok=True)
 
     for name, image, bin_im, size in zip(names, images, labels, sizes):
-        fp = os.path.join(args.data.inference_mask_dir, name, args.data.mask_suffix)
+        fp = os.path.join(args.data.inference_mask_dir, f"{name}{args.data.mask_suffix}")
         image = image.permute(1, 2, 0)
         overlayed_im = apply_seg_mask(image, bin_im)
         overlayed_im.save(fp)

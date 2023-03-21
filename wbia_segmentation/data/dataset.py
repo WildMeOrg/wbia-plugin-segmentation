@@ -141,7 +141,7 @@ class InferenceSegDataset(Dataset):
         else:
             self.image_fns = image_fns
         self.image_fns.sort()
-        self.names = [os.path.splitext(im_fn)[0] for im_fn in self.image_fns]
+        self.names = [os.path.splitext(im_fn)[0].split("/")[-1] for im_fn in self.image_fns]
         if not self.image_fns or len(self.image_fns) == 0:
             raise RuntimeError(f'No image filenames were specified or the list was empty, make sure you the db has images')
         logging.info(f'Creating inference dataset with {len(self.image_fns)} annotations')
