@@ -11,6 +11,41 @@ from typing import List
 import logging
 import random
 import argparse
+import json
+
+
+def increase_bbox(bbox, scale, image_size, type='xyhw'):
+    """Increase the size of the bounding box
+    Input:
+        bbox_xywh:
+        scale:
+        image_size: tuple of int, (h, w)
+        type (string): notation of bbox: 'xyhw' or 'xyx2y2'
+    """
+    if type == 'xyhw':
+        x1, y1, bbox_w, bbox_h = bbox
+        x2 = x1 + bbox_w
+        y2 = y1 + bbox_h
+    else:
+        x1, y1, x2, y2 = bbox
+        bbox_h = y2 - y1
+        bbox_w = x2 - x1
+    h, w = image_size
+
+    increase_w_by = (bbox_w * scale - bbox_w) // 2
+    increase_h_by = (bbox_h * scale - bbox_h) // 2
+
+    new_x1 = int(max(0, x1 - increase_w_by))
+    new_x2 = int(min(w - 1, x2 + increase_w_by))
+
+    new_y1 = int(max(0, y1 - increase_h_by))
+    new_y2 = int(min(h - 1, y2 + increase_h_by))
+
+    if type == 'xyhw':
+        return (new_x1, new_y1, new_x2 - new_x1, new_y2 - new_y1)
+    else:
+        return (new_x1, new_y1, new_x2, new_y2)
+
 
 def select_random_elements(index_list: List, num_elements: int, seed: int=None) -> List:
     """
@@ -135,6 +170,19 @@ class InferenceSegDataset(Dataset):
         self.model_name = cfg.model.name
         self.transform = transform
 
+        with open(cfg.test.annot_dir) as f:
+            annots = json.load(f)
+
+        # Get the image file names from the annotations without extension (e.g. 000000000001 without .jpg)
+        id2image = {annot['id']: annot['file_name'][:-4] for annot in annots['images']}
+        imagefn2box = {}
+
+        for annot in annots['annotations']:
+            image_fn = id2image[annot['image_id']]
+            imagefn2box[image_fn] = annot['bbox']
+        
+        self.imagefn2box = imagefn2box
+
         if isinstance(image_fns_or_path, str):
             image_fns = listdir(image_fns_or_path)
             self.image_fns = [join(image_fns_or_path, fn) for fn in image_fns]
@@ -154,8 +202,18 @@ class InferenceSegDataset(Dataset):
             im = read_image(self.image_fns[idx])
         else:
             im = read_image(self.image_fns[idx]) / 255
+        
+        bbox = self.imagefn2box[self.names[idx]]
+
+        # Get box around axis-aligned bounding box
+        x1, y1, bw, bh = increase_bbox(
+            bbox, 1.0, im.shape[1:], type='xyhw'
+        )
+
+        # Crop image and coordinates
+        image_cropped = im[:, y1 : y1 + bh, x1 : x1 + bw]
 
         if self.transform is not None:
-            im = self.transform(im)
+            im = self.transform(image_cropped)
       
         return im, self.names[idx], (im.size()[-2], im.size()[-1])
